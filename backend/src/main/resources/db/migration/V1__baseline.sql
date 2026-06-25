@@ -1,0 +1,2 @@
+-- Baseline placeholder for the existing production schema.
+-- REVIEW REQUIRED: replace this with the full schema migration before bootstrapping a new environment.

@@ -1,0 +1,62 @@
+package com.real_estate.Kunal.DTO;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+import java.util.List;
+
+import lombok.Builder;
+import lombok.Value;
+
+@Value
+@Builder
+public class ProjectResponse {
+    Long id;
+    String projectName;
+    Long locationId;
+    String description;
+    Long uploadedBy;
+    String addedByName;
+    String addedByRole;
+    String modifiedByName;
+    String modifiedByRole;
+    LocalDateTime createdAt;
+    LocalDateTime updatedAt;
+    String status;
+    LocalDateTime completedAt;
+
+    // Property taxonomy
+    String propertyCategory;
+    String propertySubcategory;
+
+    // Project timeline
+    LocalDate possessionDate;
+
+    String projectStatus;
+
+    // Property Details (project-level summary)
+    Double price;
+    Double pricePerSqFt;
+    Double carpetArea;
+    Double builtUpArea;
+    Double superBuiltUpArea;
+
+    String address;
+
+    String city;
+    String area;
+    String state;
+    String zipCode;
+    String googleMapsUrl;
+    Double latitude;
+    Double longitude;
+    String coverPhotoUrl;
+    Integer totalUnits;
+    Integer unitsSold;
+    String builderName;
+
+    String builderNumber;
+    List<ProjectDocumentResponse> documents;
+    List<SaleRecordResponse> sales;
+    List<ProjectConfigDTO> configs;
+}

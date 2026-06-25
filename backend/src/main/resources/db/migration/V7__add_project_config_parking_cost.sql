@@ -1,0 +1,5 @@
+ALTER TABLE project_configs
+    ADD COLUMN IF NOT EXISTS parking_cost DOUBLE PRECISION;
+
+ALTER TABLE sales
+    ADD COLUMN IF NOT EXISTS parking_cost DOUBLE PRECISION;

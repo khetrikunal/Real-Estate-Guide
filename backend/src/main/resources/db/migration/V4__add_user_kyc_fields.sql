@@ -1,0 +1,14 @@
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS aadhaar_number VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS aadhaar_card_url VARCHAR(512),
+    ADD COLUMN IF NOT EXISTS pan_number VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS kyc_status VARCHAR(20) DEFAULT 'PENDING',
+    ADD COLUMN IF NOT EXISTS kyc_verified_by BIGINT,
+    ADD COLUMN IF NOT EXISTS kyc_verified_at TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS kyc_rejection_reason VARCHAR(255);
+
+ALTER TABLE temp_registrations
+    ADD COLUMN IF NOT EXISTS profile_photo_url VARCHAR(512),
+    ADD COLUMN IF NOT EXISTS aadhaar_number VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS aadhaar_card_url VARCHAR(512),
+    ADD COLUMN IF NOT EXISTS pan_number VARCHAR(20);

@@ -1,0 +1,92 @@
+/*
+  UI Reset / Placeholder Utilities (Scoped)
+
+  Important:
+  - This file must NOT override the real dashboard theme.
+  - It should only provide styling for placeholder/demo blocks.
+
+  The premium dark dashboard styling lives in:
+  - REACT/src/v0/app/globals.css
+  - REACT/src/styles/design-system.css
+
+  Any global/light palette forcing here can break authenticated pages.
+*/
+
+* {
+  box-sizing: border-box;
+}
+
+/* Placeholder surfaces only */
+.page-transition,
+.ui-reset-surface {
+  min-height: calc(100vh - 96px);
+}
+
+.ui-reset-surface {
+  width: 100%;
+  display: grid;
+  gap: 24px;
+  align-content: start;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  padding: 24px;
+}
+
+.ui-reset-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ui-reset-mark {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+.ui-reset-title-group {
+  display: grid;
+  gap: 8px;
+}
+
+.ui-reset-line {
+  height: 12px;
+  background: #f3f4f6;
+}
+
+.ui-reset-line-title {
+  width: min(280px, 50vw);
+}
+
+.ui-reset-line-subtitle {
+  width: min(180px, 42vw);
+}
+
+.ui-reset-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(220px, 0.8fr);
+  gap: 16px;
+}
+
+.ui-reset-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.ui-reset-block {
+  min-height: 160px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+.ui-reset-block-large {
+  min-height: 336px;
+}
+
+@media (max-width: 760px) {
+  .ui-reset-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

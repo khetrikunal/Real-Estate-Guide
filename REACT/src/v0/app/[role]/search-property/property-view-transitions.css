@@ -1,0 +1,25 @@
+html[data-motion="on"]::view-transition-group(*) {
+  animation-duration: 280ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html[data-motion="on"]::view-transition-old(*),
+html[data-motion="on"]::view-transition-new(*) {
+  animation-duration: 280ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  mix-blend-mode: normal;
+}
+
+html:not([data-motion="on"])::view-transition-group(*),
+html:not([data-motion="on"])::view-transition-old(*),
+html:not([data-motion="on"])::view-transition-new(*) {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html::view-transition-group(*),
+  html::view-transition-old(*),
+  html::view-transition-new(*) {
+    animation: none;
+  }
+}

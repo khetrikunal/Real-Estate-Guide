@@ -1,0 +1,3 @@
+ALTER TABLE projects
+ADD COLUMN IF NOT EXISTS builder_name TEXT,
+ADD COLUMN IF NOT EXISTS builder_number TEXT;

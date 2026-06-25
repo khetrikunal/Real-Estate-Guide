@@ -1,0 +1,56 @@
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
+import { fileURLToPath, URL } from 'node:url';
+
+const backendTarget = 'http://43.205.232.94';
+const apiProxy = {
+  target: backendTarget,
+  changeOrigin: true,
+  secure: false,
+  configure: (proxy) => {
+    proxy.on('proxyReq', (proxyReq) => {
+      proxyReq.removeHeader('origin');
+    });
+  },
+};
+const wsProxy = {
+  target: backendTarget,
+  changeOrigin: true,
+  secure: false,
+  ws: true,
+  configure: (proxy) => {
+    proxy.on('proxyReqWs', (proxyReq) => {
+      proxyReq.removeHeader('origin');
+    });
+  },
+};
+
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: [
+      { find: '@/motion', replacement: fileURLToPath(new URL('./src/motion/index.ts', import.meta.url)) },
+      { find: 'next/link', replacement: fileURLToPath(new URL('./src/v0/shims/next-link.tsx', import.meta.url)) },
+      { find: 'next/navigation', replacement: fileURLToPath(new URL('./src/v0/shims/next-navigation.ts', import.meta.url)) },
+      { find: 'next-themes', replacement: fileURLToPath(new URL('./src/v0/shims/next-themes.tsx', import.meta.url)) },
+      { find: 'next', replacement: fileURLToPath(new URL('./src/v0/shims/next.ts', import.meta.url)) },
+      { find: '@', replacement: fileURLToPath(new URL('./src/v0', import.meta.url)) },
+      { find: '@app', replacement: fileURLToPath(new URL('./src', import.meta.url)) },
+    ],
+  },
+  server: {
+    port: 5174,
+    strictPort: false,
+    proxy: {
+      '/api': apiProxy,
+      '/ws': wsProxy,
+    },
+  },
+  preview: {
+    proxy: {
+      '/api': apiProxy,
+      '/ws': wsProxy,
+    },
+  },
+});

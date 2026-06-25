@@ -1,0 +1,48 @@
+/* Add Project flow accessibility: ensure readable text on dark/glass inputs */
+
+.reference-add-project-page input,
+.reference-add-project-page textarea,
+.reference-add-project-page select {
+  color: #111827 !important;
+  background: #ffffff !important;
+}
+
+.reference-add-project-page input::placeholder,
+.reference-add-project-page textarea::placeholder {
+  color: #6b7280 !important;
+  opacity: 1 !important;
+}
+
+.reference-add-project-page label {
+  color: #374151 !important;
+  font-weight: 500 !important;
+}
+
+/* Native select dropdown options */
+.reference-add-project-page select option {
+  color: #111827 !important;
+  background: #ffffff !important;
+}
+
+/* Shadcn/Radix Select: trigger display text + dropdown viewport text */
+.reference-add-project-page [role="combobox"],
+.reference-add-project-page [role="combobox"] * {
+  color: #111827 !important;
+}
+
+.reference-add-project-page [role="dialog"] [role="option"],
+.reference-add-project-page [role="listbox"] [role="option"],
+.reference-add-project-page [data-radix-select-viewport] [data-state] {
+  color: #111827 !important;
+  background: #ffffff !important;
+}
+
+/* Validation/error text should also be high contrast */
+.reference-add-project-page .text-destructive,
+.reference-add-project-page [class*="destructive"],
+.reference-add-project-page .text-destructive\/*,
+.reference-add-project-page [class*="destructive"] {
+  color: #991b1b !important;
+}
+
+

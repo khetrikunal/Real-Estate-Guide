@@ -1,0 +1,72 @@
+/* AuthenticatedBackground styles */
+
+.authenticated-background {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  isolation: isolate;
+  /* Token-driven: never force dark for light mode */
+  background: var(--background);
+}
+
+
+/* Full-screen background image */
+.authenticated-background__bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+
+  /* Full background image (provided asset). `AuthenticatedBackground.tsx` sets backgroundImage inline. */
+  background-image: var(--dashboard-bg, none);
+
+  /* Premium positioning */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: saturate(1.05) contrast(1.03);
+
+  /* prevent layout flashes */
+  transform: scale(1.02);
+}
+
+
+/* Readability overlay over background */
+.authenticated-background__overlay {
+  /* Light mode tint */
+  background:
+    linear-gradient(180deg, rgba(255, 252, 244, 0.55) 0%, rgba(255, 252, 244, 0.35) 55%, rgba(8, 10, 20, 0.55) 100%),
+    radial-gradient(900px 520px at 50% 0%, rgba(184, 134, 26, 0.22), transparent 60%);
+
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+
+  /* Dark mode tint */
+  background:
+    linear-gradient(180deg, rgba(255, 252, 244, 0.55) 0%, rgba(255, 252, 244, 0.35) 55%, rgba(8, 10, 20, 0.55) 100%),
+    radial-gradient(900px 520px at 50% 0%, rgba(184, 134, 26, 0.22), transparent 60%);
+
+/* Premium light overlay only (no dark overrides). */
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+
+.authenticated-background__content {
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Ensure shell components stay readable and do not lose their glass background */
+.authenticated-background .reference-shell,
+.authenticated-background .app-shell {
+  background: transparent;
+}
+
+.authenticated-background .flex.h-svh.w-full.overflow-hidden.bg-background {
+  background: transparent;
+}
+

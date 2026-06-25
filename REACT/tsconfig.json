@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "baseUrl": ".",
+    "paths": {
+      "@/motion": ["src/motion/index.ts"],
+      "@/*": ["src/v0/*"],
+      "@app/*": ["src/*"],
+      "next/link": ["src/v0/shims/next-link.tsx"],
+      "next/navigation": ["src/v0/shims/next-navigation.ts"],
+      "next-themes": ["src/v0/shims/next-themes.tsx"],
+      "next": ["src/v0/shims/next.ts"]
+    },
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx"
+  },
+  "include": ["src"],
+  "references": []
+}
