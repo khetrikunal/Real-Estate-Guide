@@ -86,7 +86,12 @@ public class AuthService {
             throw new RuntimeException("Invalid password");
         }
 
-        Role requestedRole = Role.valueOf(request.getRole());
+        Role requestedRole;
+        try {
+            requestedRole = Role.valueOf(request.getRole().trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid role specified: " + request.getRole());
+        }
         if (user.getRole() != requestedRole) {
             throw new RuntimeException("Selected role does not match this account");
         }

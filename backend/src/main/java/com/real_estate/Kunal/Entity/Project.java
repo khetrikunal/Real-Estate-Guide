@@ -71,7 +71,10 @@ public class Project {
 
     // Property Details (project-level summary)
     private Double price;
-    private Double pricePerSqFt;
+
+    @Column(name = "price_per_sq_ft")
+    private Double pricePerSqft;
+
     private Double carpetArea;
     private Double builtUpArea;
     private Double superBuiltUpArea;
@@ -111,6 +114,22 @@ public class Project {
     public double getPrice() {
         if (configs == null || configs.isEmpty()) return 0.0;
         return configs.stream().mapToDouble(ProjectConfig::getPrice).min().orElse(0.0);
+    }
+
+    public Double getPricePerSqft() {
+        return pricePerSqft;
+    }
+
+    public void setPricePerSqft(Double pricePerSqft) {
+        this.pricePerSqft = pricePerSqft;
+    }
+
+    public Double getPricePerSqFt() {
+        return pricePerSqft;
+    }
+
+    public void setPricePerSqFt(Double pricePerSqFt) {
+        this.pricePerSqft = pricePerSqFt;
     }
 
     @CreationTimestamp

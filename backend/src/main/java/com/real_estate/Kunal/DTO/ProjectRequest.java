@@ -1,4 +1,4 @@
-0package com.real_estate.Kunal.DTO;
+package com.real_estate.Kunal.DTO;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
