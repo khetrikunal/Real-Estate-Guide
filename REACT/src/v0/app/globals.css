@@ -538,25 +538,6 @@
   background: #ffffff !important;
 }
 
-
-  --ref-surface-strong: rgba(255, 252, 244, 0.96);
-  --ref-surface-soft: rgba(201, 168, 76, 0.06);
-  --ref-border: rgba(160, 120, 40, 0.14);
-  --ref-border-strong: rgba(160, 120, 40, 0.24);
-  --ref-text: rgba(28, 20, 8, 0.92);
-  --ref-text-muted: rgba(28, 20, 8, 0.58);
-  --ref-text-faint: rgba(28, 20, 8, 0.36);
-  --ref-gold-soft: rgba(201, 168, 76, 0.10);
-  --ref-success: #1a7a42;
-  --ref-warning: #b86e12;
-  --ref-danger: #c01f2f;
-  --ref-radius-shell: 18px;
-  --ref-radius-panel: 14px;
-  --ref-radius-card: 12px;
-  --ref-radius-control: 10px;
-  --ref-shadow-card: 0 4px 24px rgba(160, 120, 40, 0.10), 0 1px 4px rgba(0,0,0,0.06);
-}
-
 .reference-shell {
   min-height: 100vh;
   min-height: 100dvh;

@@ -17,7 +17,12 @@ import java.util.stream.Collectors;
 @Configuration
 public class CorsConfig {
 
-    @Value("${app.security.allowed-origins:http://localhost:53124,http://127.0.0.1:53124,http://localhost:56518,http://127.0.0.1:56518,http://localhost:[*],http://127.0.0.1:[*],http://[::1]:[*],https://realestate-guide.in,https://www.realestate-guide.in}")
+    // Default is production-safe (real domain only).
+    // For local development, set APP_SECURITY_ALLOWED_ORIGINS in your .env,
+    // e.g.: APP_SECURITY_ALLOWED_ORIGINS=http://localhost:5173,https://realestate-guide.in
+    // Note: the isAllowedOrigin() wildcard below already allows any localhost/127.0.0.1/::1
+    // port for requests not matched by the configured set, so plain localhost dev still works.
+    @Value("${app.security.allowed-origins:https://realestate-guide.in,https://www.realestate-guide.in}")
     private String allowedOrigins;
 
     @Bean
