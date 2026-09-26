@@ -279,10 +279,8 @@ public class FollowUpService {
         if (actor.getRole() == Role.SUPER_ADMIN) {
             return;
         }
-        String assignedEmployeeId = lead.getAssignedEmployeeId();
-        if (assignedEmployeeId != null && getVisibleOwnerIds(actor).stream()
-                .map(String::valueOf)
-                .anyMatch(assignedEmployeeId::equals)) {
+        Long assignedUserId = lead.getAssignedUserId();
+        if (assignedUserId != null && getVisibleOwnerIds(actor).contains(assignedUserId)) {
             return;
         }
         throw new RuntimeException("Lead is outside your visible scope");

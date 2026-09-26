@@ -1,6 +1,5 @@
 package com.real_estate.Kunal.DTO;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -10,7 +9,11 @@ public class AssignLeadRequest {
     @NotNull(message = "Lead ID is required")
     private Long leadId;
 
-    @NotBlank(message = "Employee ID is required")
-    private String employeeId;
+    /**
+     * The user ID (users.id) to assign this lead to.
+     * Previously accepted as a String; now a proper Long FK.
+     */
+    @NotNull(message = "User ID is required")
+    private Long userId;
 
 }
