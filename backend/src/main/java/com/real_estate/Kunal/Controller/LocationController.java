@@ -68,7 +68,7 @@ public class LocationController {
 
     /** POST /api/locations/cities — SuperAdmin adds a new city */
     @PostMapping("/cities")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SUB_ADMIN', 'EMPLOYEE')")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public CustomCityResponse addCustomCity(@Valid @RequestBody CustomCityRequest request) {
         return locationService.addCustomCity(request);
     }

@@ -43,7 +43,7 @@ public class AreaController {
      * State defaults to Maharashtra.
      */
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SUB_ADMIN', 'EMPLOYEE')")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> addArea(@RequestBody Map<String, String> body) {
         String name = body.get("name") != null ? body.get("name").trim() : "";
         String city = body.get("city") != null ? body.get("city").trim() : "";
@@ -71,7 +71,7 @@ public class AreaController {
      * DELETE /api/areas/{id}
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SUB_ADMIN', 'EMPLOYEE')")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> deleteArea(@PathVariable Long id) {
         if (!areaRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Area not found");
