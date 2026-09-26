@@ -6,6 +6,7 @@ import com.real_estate.Kunal.Entity.Project;
 import com.real_estate.Kunal.Entity.ProjectConfig;
 import com.real_estate.Kunal.Entity.Role;
 import com.real_estate.Kunal.Entity.User;
+import com.real_estate.Kunal.Repository.AreaRepository;
 import com.real_estate.Kunal.Repository.LeadRepository;
 import com.real_estate.Kunal.Repository.ProjectConfigRepository;
 import com.real_estate.Kunal.Repository.ProjectRepository;
@@ -19,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,19 +46,28 @@ class LeadServiceTest {
     @Mock
     private ProjectConfigRepository projectConfigRepository;
 
+    @Mock
+    private AreaRepository areaRepository;
+
     @AfterEach
     void clearSecurityContext() {
         SecurityContextHolder.clearContext();
     }
 
-    @Test
-    void createLeadStoresSelectedProjectConfigAndReadableInterest() {
-        LeadService service = new LeadService(
+    /** Helper: build the service with all 5 required dependencies. */
+    private LeadService buildService() {
+        return new LeadService(
                 leadRepository,
                 userRepository,
                 projectRepository,
-                projectConfigRepository
+                projectConfigRepository,
+                areaRepository
         );
+    }
+
+    @Test
+    void createLeadStoresSelectedProjectConfigAndReadableInterest() {
+        LeadService service = buildService();
         User currentUser = currentAdminUser();
         Project project = selectedProject();
         ProjectConfig config = selectedConfig(project);
@@ -66,6 +77,9 @@ class LeadServiceTest {
         when(userRepository.findByEmail("admin@example.com")).thenReturn(Optional.of(currentUser));
         when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
         when(projectConfigRepository.findByIdAndProjectId(200L, 100L)).thenReturn(Optional.of(config));
+        // areaRepository returns no match for "Pune" (by city) – resolveAreaId will fall through to name search
+        when(areaRepository.findByCityIgnoreCase("Pune")).thenReturn(List.of());
+        when(areaRepository.findAll()).thenReturn(List.of());  // no areas seeded in unit test
 
         String message = service.createLead(request);
 
@@ -79,7 +93,8 @@ class LeadServiceTest {
         assertThat(savedLead.getProjectId()).isEqualTo(100L);
         assertThat(savedLead.getConfigId()).isEqualTo(200L);
         assertThat(savedLead.getCity()).isEqualTo("Pune");
-        assertThat(savedLead.getAssignedEmployeeId()).isEqualTo("42");
+        // assignedUserId is now a Long FK — previously stored as String "42"
+        assertThat(savedLead.getAssignedUserId()).isEqualTo(42L);
         assertThat(savedLead.getPropertyInterest())
                 .contains("Skyline Towers")
                 .contains("2 BHK Premium");
@@ -87,12 +102,7 @@ class LeadServiceTest {
 
     @Test
     void createLeadRejectsConfigOutsideSelectedProject() {
-        LeadService service = new LeadService(
-                leadRepository,
-                userRepository,
-                projectRepository,
-                projectConfigRepository
-        );
+        LeadService service = buildService();
         User currentUser = currentAdminUser();
         Project project = selectedProject();
         CreateLeadRequest request = createLeadRequest(100L, 999L);
@@ -110,12 +120,7 @@ class LeadServiceTest {
 
     @Test
     void createLeadRejectsEmployeeProjectOutsideVisibleScope() {
-        LeadService service = new LeadService(
-                leadRepository,
-                userRepository,
-                projectRepository,
-                projectConfigRepository
-        );
+        LeadService service = buildService();
         User currentUser = currentEmployeeUser();
         Project project = selectedProject();
         CreateLeadRequest request = createLeadRequest(100L, 200L);
@@ -129,6 +134,60 @@ class LeadServiceTest {
                 .hasMessage("Selected property not found");
         verify(projectConfigRepository, never()).findByIdAndProjectId(200L, 100L);
         verify(leadRepository, never()).save(any());
+    }
+
+    @Test
+    void createLeadRejectsLeadOutsideSubAdminAssignedCity() {
+        LeadService service = buildService();
+        User locationSubAdmin = User.builder()
+                .id(99L)
+                .email("subadmin@example.com")
+                .role(Role.SUB_ADMIN)
+                .subscriptionType("location_based")
+                .assignedCity("Mumbai")
+                .build();
+        CreateLeadRequest request = new CreateLeadRequest();
+        request.setCustomerName("Test Customer");
+        request.setPhone("9999999999");
+        request.setEmail("customer@example.com");
+        request.setCity("Pune");
+
+        authenticateAs("subadmin@example.com");
+        when(userRepository.findByEmail("subadmin@example.com")).thenReturn(Optional.of(locationSubAdmin));
+
+        assertThatThrownBy(() -> service.createLead(request))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .satisfies(ex -> {
+                    org.springframework.web.server.ResponseStatusException rse = (org.springframework.web.server.ResponseStatusException) ex;
+                    assertThat(rse.getStatusCode()).isEqualTo(org.springframework.http.HttpStatus.FORBIDDEN);
+                    assertThat(rse.getReason()).contains("You can only create leads in your assigned city: Mumbai");
+                });
+        verify(leadRepository, never()).save(any());
+    }
+
+    @Test
+    void getAllLeadsFiltersOutLeadsOutsideAssignedCity() {
+        LeadService service = buildService();
+        User locationSubAdmin = User.builder()
+                .id(99L)
+                .email("subadmin@example.com")
+                .role(Role.SUB_ADMIN)
+                .subscriptionType("location_based")
+                .assignedCity("Pune")
+                .build();
+
+        Lead puneLead = Lead.builder().id(1L).city("Pune").assignedUserId(99L).build();
+        Lead mumbaiLead = Lead.builder().id(2L).city("Mumbai").assignedUserId(99L).build();
+
+        authenticateAs("subadmin@example.com");
+        when(userRepository.findByEmail("subadmin@example.com")).thenReturn(Optional.of(locationSubAdmin));
+        when(leadRepository.findByAssignedUserIdIn(List.of(99L))).thenReturn(List.of(puneLead, mumbaiLead));
+
+        List<Lead> visibleLeads = service.getAllLeads();
+
+        assertThat(visibleLeads).hasSize(1);
+        assertThat(visibleLeads.get(0).getId()).isEqualTo(1L);
+        assertThat(visibleLeads.get(0).getCity()).isEqualTo("Pune");
     }
 
     private static void authenticateAs(String email) {

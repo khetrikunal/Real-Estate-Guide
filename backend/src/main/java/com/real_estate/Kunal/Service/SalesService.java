@@ -330,7 +330,23 @@ public class SalesService {
         }
 
         if (current.getRole() == Role.EMPLOYEE || current.getRole() == Role.SUB_ADMIN) {
-            return saleRepository.findBySoldByUserId(current.getId());
+            List<Sale> sales = saleRepository.findBySoldByUserId(current.getId());
+            if (isLocationScoped(current)) {
+                String assignedCity = resolveAssignedCity(current);
+                String assignedArea = resolveAssignedArea(current);
+                List<String> cityScopes = scopeValues(assignedCity);
+                List<String> areaScopes = scopeValues(assignedArea);
+                if (!cityScopes.isEmpty() && !hasAllScope(cityScopes)) {
+                    return sales.stream().filter(sale -> {
+                        if (sale.getProjectId() == null) return true;
+                        Project p = projectRepository.findById(sale.getProjectId()).orElse(null);
+                        if (p == null) return true;
+                        return matchesScope(p.getCity(), cityScopes)
+                                && (areaScopes.isEmpty() || hasAllScope(areaScopes) || matchesScope(p.getArea(), areaScopes));
+                    }).collect(Collectors.toList());
+                }
+            }
+            return sales;
         }
 
         return List.of();
@@ -344,6 +360,61 @@ public class SalesService {
                 && !java.util.Objects.equals(project.getUploadedBy(), user.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only sell properties you created");
         }
+        if (isLocationScoped(user)) {
+            String assignedCity = resolveAssignedCity(user);
+            String assignedArea = resolveAssignedArea(user);
+            List<String> cityScopes = scopeValues(assignedCity);
+            List<String> areaScopes = scopeValues(assignedArea);
+            if (!cityScopes.isEmpty() && !hasAllScope(cityScopes) && !matchesScope(project.getCity(), cityScopes)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Sale project is outside assigned city");
+            }
+            if (!areaScopes.isEmpty() && !hasAllScope(areaScopes) && !matchesScope(project.getArea(), areaScopes)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Sale project is outside assigned area");
+            }
+        }
+    }
+
+    private boolean isLocationScoped(User user) {
+        if (user == null) return false;
+        if (user.getRole() == Role.SUB_ADMIN) {
+            return "location_based".equalsIgnoreCase(user.getSubscriptionType());
+        }
+        if (user.getRole() == Role.EMPLOYEE) {
+            if ("location_based".equalsIgnoreCase(user.getSubscriptionType())) return true;
+            if (user.getAssignedCity() != null && !user.getAssignedCity().isBlank()) return true;
+            if (user.getAddedBy() != null) {
+                return userRepository.findById(user.getAddedBy())
+                        .map(parent -> "location_based".equalsIgnoreCase(parent.getSubscriptionType()))
+                        .orElse(false);
+            }
+        }
+        return false;
+    }
+
+    private String resolveAssignedCity(User user) {
+        if (user == null) return null;
+        if (user.getAssignedCity() != null && !user.getAssignedCity().isBlank()) {
+            return user.getAssignedCity();
+        }
+        if (user.getRole() == Role.EMPLOYEE && user.getAddedBy() != null) {
+            return userRepository.findById(user.getAddedBy())
+                    .map(User::getAssignedCity)
+                    .orElse(null);
+        }
+        return null;
+    }
+
+    private String resolveAssignedArea(User user) {
+        if (user == null) return null;
+        if (user.getAssignedArea() != null && !user.getAssignedArea().isBlank()) {
+            return user.getAssignedArea();
+        }
+        if (user.getRole() == Role.EMPLOYEE && user.getAddedBy() != null) {
+            return userRepository.findById(user.getAddedBy())
+                    .map(User::getAssignedArea)
+                    .orElse(null);
+        }
+        return null;
     }
 
     private List<String> scopeValues(String value) {
