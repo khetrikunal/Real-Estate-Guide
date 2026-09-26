@@ -1,8 +1,9 @@
 package com.real_estate.Kunal.Service;
 
 import java.util.List;
-import java.time.LocalDateTime;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -18,6 +19,8 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class EmployeeService {
+
+    private static final Logger log = LoggerFactory.getLogger(EmployeeService.class);
 
     private final EmployeeRepository employeeRepository;
     private final UserRepository userRepository;
@@ -81,6 +84,8 @@ public class EmployeeService {
                     if (request.getAdminId() != null) {
                         existing.setAdminId(request.getAdminId());
                     }
+                    // Keep userId in sync with the User row we just upserted
+                    existing.setUserId(user.getId());
                     return employeeRepository.save(existing);
                 })
                 .orElseGet(() -> {
@@ -93,9 +98,15 @@ public class EmployeeService {
                             .email(normalizedEmail)
                             .phone(request.getPhone())
                             .adminId(request.getAdminId())
+                            .userId(user.getId())   // link to the User row we just created
                             .build();
                     return employeeRepository.save(created);
                 });
+
+        if (employee.getUserId() == null) {
+            log.warn("Employee id={} email='{}' has no userId — Flyway V10 backfill may have missed this row",
+                    employee.getId(), employee.getEmail());
+        }
 
         return employee;
     }
