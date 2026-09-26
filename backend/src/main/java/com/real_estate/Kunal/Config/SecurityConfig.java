@@ -2,7 +2,6 @@ package com.real_estate.Kunal.Config;
 
 import com.real_estate.Kunal.Security.JwtAuthenticationFilter;
 import com.real_estate.Kunal.Security.RateLimitFilter;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -13,21 +12,22 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.*;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
-
+/**
+ * Spring Security configuration.
+ *
+ * CORS is intentionally disabled here ({@code .cors(cors -> cors.disable())})
+ * because CORS headers are handled upstream by the servlet-level filter defined
+ * in {@link CorsConfig}, which runs at {@link org.springframework.core.Ordered#HIGHEST_PRECEDENCE}.
+ * That filter is the single source of truth for CORS – do not add a second
+ * {@code CorsConfigurationSource} bean here.
+ */
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtFilter;
     private final RateLimitFilter rateLimitFilter;
-
-    @Value("${app.security.allowed-origins:http://localhost:53124,http://127.0.0.1:53124,http://localhost:56518,http://127.0.0.1:56518,http://localhost:[*],http://127.0.0.1:[*],http://[::1]:[*],https://realestate-guide.in,https://www.realestate-guide.in}")
-    private String allowedOrigins;
 
     public SecurityConfig(JwtAuthenticationFilter jwtFilter, RateLimitFilter rateLimitFilter) {
         this.jwtFilter = jwtFilter;
@@ -54,7 +54,8 @@ public class SecurityConfig {
                         )))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers( "/api/auth/register",
+                        .requestMatchers("/api/test", "/test",
+                                "/api/auth/register",
                                 "/api/auth/login",
                             "/api/auth/forgot-password/send-otp",
                             "/api/auth/forgot-password/verify-otp",
@@ -87,13 +88,17 @@ public class SecurityConfig {
                         .requestMatchers("/api/employees", "/api/employees/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/locations").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/locations/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/locations", "/api/locations/**").hasAnyRole("SUPER_ADMIN", "SUB_ADMIN", "EMPLOYEE")
+                        // POST /api/locations/cities is restricted by @PreAuthorize('SUPER_ADMIN')
+                        // on LocationController.addCustomCity — SecurityConfig matcher removed to avoid duplication.
+                        // Other /api/locations mutating operations (PUT/PATCH/DELETE, and generic POST)
+                        // have no @PreAuthorize, so they are guarded here.
+                        .requestMatchers(HttpMethod.POST, "/api/locations").hasAnyRole("SUPER_ADMIN", "SUB_ADMIN", "EMPLOYEE")
                         .requestMatchers(HttpMethod.PUT, "/api/locations/**").hasAnyRole("SUPER_ADMIN", "SUB_ADMIN", "EMPLOYEE")
                         .requestMatchers(HttpMethod.PATCH, "/api/locations/**").hasAnyRole("SUPER_ADMIN", "SUB_ADMIN", "EMPLOYEE")
                         .requestMatchers(HttpMethod.DELETE, "/api/locations/**").hasAnyRole("SUPER_ADMIN", "SUB_ADMIN", "EMPLOYEE")
+                        // POST /api/areas and DELETE /api/areas/** are restricted by @PreAuthorize('SUPER_ADMIN')
+                        // on AreaController — SecurityConfig matchers removed to avoid duplication.
                         .requestMatchers(HttpMethod.GET, "/api/areas").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/areas").hasAnyRole("SUPER_ADMIN", "SUB_ADMIN", "EMPLOYEE")
-                        .requestMatchers(HttpMethod.DELETE, "/api/areas/**").hasAnyRole("SUPER_ADMIN", "SUB_ADMIN", "EMPLOYEE")
                         .requestMatchers("/api/subscription/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "SUB_ADMIN")
                         .requestMatchers("/api/projects/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "EMPLOYEE")
                         .requestMatchers("/api/kyc/**").authenticated()
@@ -108,26 +113,6 @@ public class SecurityConfig {
                         UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
-    }
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-
-        CorsConfiguration config = new CorsConfiguration();
-
-        config.setAllowedOriginPatterns(Arrays.stream(allowedOrigins.split(","))
-                .map(String::trim)
-                .filter(origin -> !origin.isBlank())
-                .collect(Collectors.toList()));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        config.setAllowedHeaders(List.of("*"));
-        config.setExposedHeaders(List.of("Authorization", "Content-Disposition", "Content-Range", "Accept-Ranges"));
-        config.setAllowCredentials(true);
-        config.setMaxAge(3600L);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-
-        return source;
     }
 
     @Bean
