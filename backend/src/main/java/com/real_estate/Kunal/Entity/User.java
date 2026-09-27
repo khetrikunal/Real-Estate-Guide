@@ -48,6 +48,20 @@ public class User {
     @Deprecated
     private String assignedArea;
 
+    /**
+     * FK to custom_cities.id — the city scope for location_based SUB_ADMIN users.
+     * Replaces the deprecated {@link #assignedCity} string field.
+     */
+    @Column(name = "custom_city_id")
+    private Long customCityId;
+
+    /**
+     * FK to areas.id — the area scope for location_based SUB_ADMIN users (optional,
+     * narrows within the city). Replaces the deprecated {@link #assignedArea} string field.
+     */
+    @Column(name = "area_id")
+    private Long areaId;
+
     private Double subscriptionRate;
 
     /** MANUAL | SELF_SIGNUP */
