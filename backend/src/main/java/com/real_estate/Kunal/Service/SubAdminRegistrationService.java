@@ -3,10 +3,14 @@ package com.real_estate.Kunal.Service;
 import com.razorpay.Order;
 import com.razorpay.RazorpayClient;
 import com.real_estate.Kunal.DTO.*;
+import com.real_estate.Kunal.Entity.Area;
+import com.real_estate.Kunal.Entity.CustomCity;
 import com.real_estate.Kunal.Entity.Location;
 import com.real_estate.Kunal.Entity.Role;
 import com.real_estate.Kunal.Entity.TempRegistration;
 import com.real_estate.Kunal.Entity.User;
+import com.real_estate.Kunal.Repository.AreaRepository;
+import com.real_estate.Kunal.Repository.CustomCityRepository;
 import com.real_estate.Kunal.Repository.LocationRepository;
 import com.real_estate.Kunal.Repository.TempRegistrationRepository;
 import com.real_estate.Kunal.Repository.UserRepository;
@@ -39,6 +43,8 @@ public class SubAdminRegistrationService {
     private final TempRegistrationRepository tempRepo;
     private final UserRepository userRepository;
     private final LocationRepository locationRepository;
+    private final CustomCityRepository customCityRepository;
+    private final AreaRepository areaRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final KycDocumentService kycDocumentService;
@@ -322,6 +328,10 @@ public class SubAdminRegistrationService {
 
         kycDocumentService.ensureTempHasRequiredDocuments(temp.getId());
 
+        // Resolve FK-based location scope (replaces deprecated assignedCity/State/Area writes)
+        Long resolvedCityId = resolveCityId(temp.getCity(), temp.getState());
+        Long resolvedAreaId = resolveAreaId(temp.getArea(), temp.getCity(), temp.getState());
+
         // Create the actual User record
         User user = User.builder()
                 .name(temp.getName())
@@ -330,9 +340,9 @@ public class SubAdminRegistrationService {
                 .phone(temp.getPhone())
                 .role(Role.SUB_ADMIN)
                 .subscriptionType(temp.getPlanType())
-                .assignedCity(temp.getCity())
-                .assignedState(temp.getState())
-                .assignedArea(temp.getArea())
+                // customCityId / areaId replace the deprecated assignedCity/State/Area fields
+                .customCityId(resolvedCityId)
+                .areaId(resolvedAreaId)
                 .subscriptionRate(temp.getSubscriptionAmount().doubleValue())
                 .signupSource("SELF_SIGNUP")
                 .paymentMethod("razorpay")
@@ -458,6 +468,40 @@ public class SubAdminRegistrationService {
             }
         }
         return locations;
+    }
+
+    /** Resolves a CustomCity id from the city+state name pair; returns null if not found. */
+    private Long resolveCityId(String city, String state) {
+        if (city == null || city.isBlank()) return null;
+        if (state != null && !state.isBlank()) {
+            return customCityRepository
+                    .findByStateIgnoreCaseAndCityIgnoreCase(state.trim(), city.trim())
+                    .map(CustomCity::getId)
+                    .orElseGet(() -> customCityRepository
+                            .findFirstByCityIgnoreCase(city.trim())
+                            .map(CustomCity::getId)
+                            .orElse(null));
+        }
+        return customCityRepository.findFirstByCityIgnoreCase(city.trim())
+                .map(CustomCity::getId)
+                .orElse(null);
+    }
+
+    /** Resolves an Area id from the area+city+state name triple; returns null if not found. */
+    private Long resolveAreaId(String area, String city, String state) {
+        if (area == null || area.isBlank() || city == null || city.isBlank()) return null;
+        if (state != null && !state.isBlank()) {
+            return areaRepository
+                    .findByNameIgnoreCaseAndCityIgnoreCaseAndStateIgnoreCase(area.trim(), city.trim(), state.trim())
+                    .map(Area::getId)
+                    .orElseGet(() -> areaRepository
+                            .findFirstByNameIgnoreCaseAndCityIgnoreCase(area.trim(), city.trim())
+                            .map(Area::getId)
+                            .orElse(null));
+        }
+        return areaRepository.findFirstByNameIgnoreCaseAndCityIgnoreCase(area.trim(), city.trim())
+                .map(Area::getId)
+                .orElse(null);
     }
 
     private String joinDistinct(List<String> values) {
