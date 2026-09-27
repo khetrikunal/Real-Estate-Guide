@@ -70,6 +70,7 @@ public class ProjectService {
     private final ActivityRepository activityRepository;
     private final SignedMediaUrlService signedMediaUrlService;
     private final ObjectStorageService objectStorageService;
+    private final LocationService locationService;
 
     private User getCurrentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -125,27 +126,30 @@ public class ProjectService {
 
         if (user != null
                 && user.getRole() == Role.SUB_ADMIN
-                && "location_based".equals(user.getSubscriptionType())
-                && user.getAssignedCity() != null && !user.getAssignedCity().isBlank()) {
-            List<String> assignedCities = scopeValues(user.getAssignedCity());
-            String reqCity = project.getCity();
-            if ((reqCity == null || reqCity.isBlank()) && assignedCities.size() == 1 && !hasAllScope(assignedCities)) {
-                project.setCity(assignedCities.get(0));
-            } else if (reqCity != null && !reqCity.isBlank() && !matchesScope(reqCity, assignedCities)) {
-                throw new ResponseStatusException(
-                        HttpStatus.FORBIDDEN,
-                        "You can only create projects in your assigned city: " + user.getAssignedCity().trim()
-                );
+                && "location_based".equals(user.getSubscriptionType())) {
+            String resolvedCity = locationService.resolveUserCityName(user);
+            if (resolvedCity != null && !resolvedCity.isBlank()) {
+                List<String> assignedCities = scopeValues(resolvedCity);
+                String reqCity = project.getCity();
+                if ((reqCity == null || reqCity.isBlank()) && assignedCities.size() == 1 && !hasAllScope(assignedCities)) {
+                    project.setCity(assignedCities.get(0));
+                } else if (reqCity != null && !reqCity.isBlank() && !matchesScope(reqCity, assignedCities)) {
+                    throw new ResponseStatusException(
+                            HttpStatus.FORBIDDEN,
+                            "You can only create projects in your assigned city: " + resolvedCity.trim()
+                    );
+                }
             }
 
             if (project.getState() == null || project.getState().isBlank()) {
-                project.setState(user.getAssignedState());
+                // State is no longer stored on User; rely on the city FK to derive it if needed
             }
 
-            // Auto-fill area from SubAdmin's assignedArea if blank
+            // Auto-fill area from SubAdmin's area scope if blank
+            String resolvedArea = locationService.resolveUserAreaName(user);
             if ((project.getArea() == null || project.getArea().isBlank())
-                    && user.getAssignedArea() != null && !user.getAssignedArea().isBlank()) {
-                project.setArea(user.getAssignedArea().trim());
+                    && resolvedArea != null && !resolvedArea.isBlank()) {
+                project.setArea(resolvedArea.trim());
             }
         }
         assertProjectAccess(user, project.getCity(), project.getArea());
@@ -276,19 +280,22 @@ public class ProjectService {
 
         if (user != null
                 && user.getRole() == Role.SUB_ADMIN
-                && "location_based".equals(user.getSubscriptionType())
-                && user.getAssignedCity() != null && !user.getAssignedCity().isBlank()) {
-            List<String> assignedCities = scopeValues(user.getAssignedCity());
-            if (project.getCity() == null || !matchesScope(project.getCity(), assignedCities)) {
-                throw new ResponseStatusException(
-                        HttpStatus.FORBIDDEN,
-                        "You can only keep projects in your assigned city: " + user.getAssignedCity().trim()
-                );
+                && "location_based".equals(user.getSubscriptionType())) {
+            String resolvedCity = locationService.resolveUserCityName(user);
+            if (resolvedCity != null && !resolvedCity.isBlank()) {
+                List<String> assignedCities = scopeValues(resolvedCity);
+                if (project.getCity() == null || !matchesScope(project.getCity(), assignedCities)) {
+                    throw new ResponseStatusException(
+                            HttpStatus.FORBIDDEN,
+                            "You can only keep projects in your assigned city: " + resolvedCity.trim()
+                    );
+                }
             }
-            // Auto-fill area from SubAdmin's assignedArea if blank
+            // Auto-fill area from SubAdmin's area scope if blank
+            String resolvedArea = locationService.resolveUserAreaName(user);
             if ((project.getArea() == null || project.getArea().isBlank())
-                    && user.getAssignedArea() != null && !user.getAssignedArea().isBlank()) {
-                project.setArea(user.getAssignedArea().trim());
+                    && resolvedArea != null && !resolvedArea.isBlank()) {
+                project.setArea(resolvedArea.trim());
             }
         }
 
@@ -606,8 +613,10 @@ public class ProjectService {
         if ("full".equalsIgnoreCase(user.getSubscriptionType())) {
             return;
         }
-        List<String> cityScopes = scopeValues(user.getAssignedCity());
-        List<String> areaScopes = scopeValues(user.getAssignedArea());
+        String resolvedCity = locationService.resolveUserCityName(user);
+        String resolvedArea = locationService.resolveUserAreaName(user);
+        List<String> cityScopes = scopeValues(resolvedCity);
+        List<String> areaScopes = scopeValues(resolvedArea);
         if (!matchesScope(city, cityScopes)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Project is outside assigned city");
         }
@@ -661,8 +670,10 @@ public class ProjectService {
         if (!isLocationBasedSubadmin(user)) {
             return projects;
         }
-        List<String> cityScopes = scopeValues(user.getAssignedCity());
-        List<String> areaScopes = scopeValues(user.getAssignedArea());
+        String resolvedCity = locationService.resolveUserCityName(user);
+        String resolvedArea = locationService.resolveUserAreaName(user);
+        List<String> cityScopes = scopeValues(resolvedCity);
+        List<String> areaScopes = scopeValues(resolvedArea);
         if (hasAllScope(cityScopes)) {
             return projects;
         }

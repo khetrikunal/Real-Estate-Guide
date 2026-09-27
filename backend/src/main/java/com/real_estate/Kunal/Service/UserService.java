@@ -49,6 +49,7 @@ public class UserService {
     private final ProjectRepository projectRepository;
     private final UserKycDocumentRepository userKycDocumentRepository;
     private final KycDocumentService kycDocumentService;
+    private final LocationService locationService;
 
     public String createAdmin(CreateUserRequest request){
 
@@ -121,7 +122,18 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(password));
         user.setRole(Role.SUB_ADMIN);
         user.setSubscriptionType(subscriptionType);
-        // Stopped writing to deprecated user.assignedCity, assignedState, assignedArea (Phase 4)
+        // Resolve and write FK-based location scope (replaces deprecated assignedCity/State/Area)
+        if ("location_based".equals(subscriptionType)) {
+            String reqCity  = request.getAssignedCity()  != null ? request.getAssignedCity().trim()  : null;
+            String reqState = request.getAssignedState() != null ? request.getAssignedState().trim() : null;
+            String reqArea  = request.getAssignedArea()  != null ? request.getAssignedArea().trim()  : null;
+            customCityRepository.findByStateIgnoreCaseAndCityIgnoreCase(
+                    reqState != null ? reqState : "", reqCity != null ? reqCity : "")
+                    .ifPresent(cc -> user.setCustomCityId(cc.getId()));
+            // Area resolution deferred — AreaRepository not injected here; use LocationService helper
+            Long areaId = locationService.resolveAreaIdByName(reqArea, reqCity, reqState);
+            user.setAreaId(areaId);
+        }
         user.setSubscriptionRate(request.getSubscriptionRate());
         user.setSignupSource(request.getAddedBy() == null ? "SELF_SIGNUP" : "MANUAL");
         user.setAddedBy(request.getAddedBy());
@@ -233,13 +245,12 @@ public class UserService {
 
             if ("location_based".equalsIgnoreCase(subType)) {
                 planType = "CUSTOM";
+                String cityName = locationService.resolveUserCityName(u);
+                String areaName = locationService.resolveUserAreaName(u);
                 String loc = "";
-                if (u.getAssignedCity() != null) loc += u.getAssignedCity();
-                if (u.getAssignedArea() != null && !u.getAssignedArea().isBlank()) {
-                    loc += " (" + u.getAssignedArea() + ")";
-                }
-                if (u.getAssignedState() != null && !loc.isEmpty()) {
-                    loc += ", " + u.getAssignedState();
+                if (cityName != null) loc += cityName;
+                if (areaName != null && !areaName.isBlank()) {
+                    loc += " (" + areaName + ")";
                 }
                 if (!loc.isEmpty()) {
                     locNames.add(loc);
@@ -495,9 +506,9 @@ public class UserService {
                 .isActive(Boolean.TRUE)
                 .signupSource(user.getSignupSource())
                 .subscriptionType(user.getSubscriptionType())
-                .assignedCity(user.getAssignedCity())
-                .assignedState(user.getAssignedState())
-                .assignedArea(user.getAssignedArea())
+                .assignedCity(locationService.resolveUserCityName(user))
+                .assignedState(null) // State no longer stored on User; front-end should derive from city
+                .assignedArea(locationService.resolveUserAreaName(user))
                 .subscriptionRate(user.getSubscriptionRate())
                 .subscriptionStartAt(user.getSubscriptionStartAt())
                 .subscriptionExpiresAt(user.getSubscriptionExpiresAt())

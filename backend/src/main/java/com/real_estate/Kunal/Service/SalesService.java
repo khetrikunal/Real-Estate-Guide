@@ -42,6 +42,7 @@ public class SalesService {
     private final SaleRepository saleRepository;
     private final UserRepository userRepository;
     private final ProjectRepository projectRepository;
+    private final LocationService locationService;
 
     // ── Legacy / existing methods ──────────────────────────────────────────
 
@@ -332,8 +333,8 @@ public class SalesService {
         if (current.getRole() == Role.EMPLOYEE || current.getRole() == Role.SUB_ADMIN) {
             List<Sale> sales = saleRepository.findBySoldByUserId(current.getId());
             if (isLocationScoped(current)) {
-                String assignedCity = resolveAssignedCity(current);
-                String assignedArea = resolveAssignedArea(current);
+                String assignedCity = locationService.resolveUserCityName(current);
+                String assignedArea = locationService.resolveUserAreaName(current);
                 List<String> cityScopes = scopeValues(assignedCity);
                 List<String> areaScopes = scopeValues(assignedArea);
                 if (!cityScopes.isEmpty() && !hasAllScope(cityScopes)) {
@@ -361,8 +362,8 @@ public class SalesService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only sell properties you created");
         }
         if (isLocationScoped(user)) {
-            String assignedCity = resolveAssignedCity(user);
-            String assignedArea = resolveAssignedArea(user);
+            String assignedCity = locationService.resolveUserCityName(user);
+            String assignedArea = locationService.resolveUserAreaName(user);
             List<String> cityScopes = scopeValues(assignedCity);
             List<String> areaScopes = scopeValues(assignedArea);
             if (!cityScopes.isEmpty() && !hasAllScope(cityScopes) && !matchesScope(project.getCity(), cityScopes)) {
@@ -389,32 +390,6 @@ public class SalesService {
             }
         }
         return false;
-    }
-
-    private String resolveAssignedCity(User user) {
-        if (user == null) return null;
-        if (user.getAssignedCity() != null && !user.getAssignedCity().isBlank()) {
-            return user.getAssignedCity();
-        }
-        if (user.getRole() == Role.EMPLOYEE && user.getAddedBy() != null) {
-            return userRepository.findById(user.getAddedBy())
-                    .map(User::getAssignedCity)
-                    .orElse(null);
-        }
-        return null;
-    }
-
-    private String resolveAssignedArea(User user) {
-        if (user == null) return null;
-        if (user.getAssignedArea() != null && !user.getAssignedArea().isBlank()) {
-            return user.getAssignedArea();
-        }
-        if (user.getRole() == Role.EMPLOYEE && user.getAddedBy() != null) {
-            return userRepository.findById(user.getAddedBy())
-                    .map(User::getAssignedArea)
-                    .orElse(null);
-        }
-        return null;
     }
 
     private List<String> scopeValues(String value) {

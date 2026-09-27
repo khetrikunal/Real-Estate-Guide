@@ -43,6 +43,7 @@ public class LeadService {
     private final ProjectRepository projectRepository;
     private final ProjectConfigRepository projectConfigRepository;
     private final AreaRepository areaRepository;
+    private final LocationService locationService;
 
     @Transactional
     public String createLead(CreateLeadRequest request){
@@ -293,8 +294,8 @@ public class LeadService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Lead is outside your visible scope");
         }
         if (isLocationScoped(actor)) {
-            String assignedCity = resolveAssignedCity(actor);
-            String assignedArea = resolveAssignedArea(actor);
+            String assignedCity = locationService.resolveUserCityName(actor);
+            String assignedArea = locationService.resolveUserAreaName(actor);
             List<String> cityScopes = scopeValues(assignedCity);
             List<String> areaScopes = scopeValues(assignedArea);
             if (!cityScopes.isEmpty() && !hasAllScope(cityScopes) && !matchesScope(lead.getCity(), cityScopes)) {
@@ -326,8 +327,8 @@ public class LeadService {
         if (!isLocationScoped(user)) {
             return;
         }
-        String assignedCity = resolveAssignedCity(user);
-        String assignedArea = resolveAssignedArea(user);
+        String assignedCity = locationService.resolveUserCityName(user);
+        String assignedArea = locationService.resolveUserAreaName(user);
         List<String> cityScopes = scopeValues(assignedCity);
         List<String> areaScopes = scopeValues(assignedArea);
         if (!cityScopes.isEmpty() && !hasAllScope(cityScopes) && !matchesScope(city, cityScopes)) {
@@ -348,8 +349,8 @@ public class LeadService {
         if (!isLocationScoped(user)) {
             return leads;
         }
-        String assignedCity = resolveAssignedCity(user);
-        String assignedArea = resolveAssignedArea(user);
+        String assignedCity = locationService.resolveUserCityName(user);
+        String assignedArea = locationService.resolveUserAreaName(user);
         List<String> cityScopes = scopeValues(assignedCity);
         List<String> areaScopes = scopeValues(assignedArea);
         if (cityScopes.isEmpty() || hasAllScope(cityScopes)) {
@@ -376,32 +377,6 @@ public class LeadService {
             }
         }
         return false;
-    }
-
-    private String resolveAssignedCity(User user) {
-        if (user == null) return null;
-        if (user.getAssignedCity() != null && !user.getAssignedCity().isBlank()) {
-            return user.getAssignedCity();
-        }
-        if (user.getRole() == Role.EMPLOYEE && user.getAddedBy() != null) {
-            return userRepository.findById(user.getAddedBy())
-                    .map(User::getAssignedCity)
-                    .orElse(null);
-        }
-        return null;
-    }
-
-    private String resolveAssignedArea(User user) {
-        if (user == null) return null;
-        if (user.getAssignedArea() != null && !user.getAssignedArea().isBlank()) {
-            return user.getAssignedArea();
-        }
-        if (user.getRole() == Role.EMPLOYEE && user.getAddedBy() != null) {
-            return userRepository.findById(user.getAddedBy())
-                    .map(User::getAssignedArea)
-                    .orElse(null);
-        }
-        return null;
     }
 
     /**
