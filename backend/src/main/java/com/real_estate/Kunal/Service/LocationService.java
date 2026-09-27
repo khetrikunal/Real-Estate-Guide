@@ -398,4 +398,76 @@ public class LocationService {
         return java.util.Optional.empty();
     }
 
+    /**
+     * Returns the city name to use for scope enforcement for the given user.
+     * <p>
+     * Prefers the FK-backed {@code customCityId}; falls back to the deprecated
+     * {@code assignedCity} string so that users created before the FK migration
+     * continue to work without a forced re-migration.
+     *
+     * @param user the user whose city scope to resolve
+     * @return city name, or {@code null} if no city scope is set
+     */
+    public String resolveUserCityName(com.real_estate.Kunal.Entity.User user) {
+        if (user == null) return null;
+        if (user.getCustomCityId() != null) {
+            return customCityRepository.findById(user.getCustomCityId())
+                    .map(CustomCity::getCity)
+                    .orElse(null);
+        }
+        // Legacy fallback – deprecated field kept for one release
+        @SuppressWarnings("deprecation")
+        String legacy = user.getAssignedCity();
+        return (legacy != null && !legacy.isBlank()) ? legacy.trim() : null;
+    }
+
+    /**
+     * Returns the area name to use for scope enforcement for the given user.
+     * <p>
+     * Prefers the FK-backed {@code areaId}; falls back to the deprecated
+     * {@code assignedArea} string.
+     *
+     * @param user the user whose area scope to resolve
+     * @return area name, or {@code null} if no area scope is set
+     */
+    public String resolveUserAreaName(com.real_estate.Kunal.Entity.User user) {
+        if (user == null) return null;
+        if (user.getAreaId() != null) {
+            return areaRepository.findById(user.getAreaId())
+                    .map(Area::getName)
+                    .orElse(null);
+        }
+        // Legacy fallback – deprecated field kept for one release
+        @SuppressWarnings("deprecation")
+        String legacy = user.getAssignedArea();
+        return (legacy != null && !legacy.isBlank()) ? legacy.trim() : null;
+    }
+
+    /**
+     * Resolves an {@link Area} id from name+city+state name strings.
+     * Convenience wrapper around {@link AreaRepository} lookups for callers
+     * that don't have {@link AreaRepository} directly injected.
+     *
+     * @param areaName area name (may be null)
+     * @param cityName city name (may be null)
+     * @param stateName state name (may be null)
+     * @return Area id, or {@code null} if not found or input is blank
+     */
+    public Long resolveAreaIdByName(String areaName, String cityName, String stateName) {
+        if (areaName == null || areaName.isBlank() || cityName == null || cityName.isBlank()) return null;
+        if (stateName != null && !stateName.isBlank()) {
+            return areaRepository
+                    .findByNameIgnoreCaseAndCityIgnoreCaseAndStateIgnoreCase(
+                            areaName.trim(), cityName.trim(), stateName.trim())
+                    .map(Area::getId)
+                    .orElseGet(() -> areaRepository
+                            .findFirstByNameIgnoreCaseAndCityIgnoreCase(areaName.trim(), cityName.trim())
+                            .map(Area::getId)
+                            .orElse(null));
+        }
+        return areaRepository.findFirstByNameIgnoreCaseAndCityIgnoreCase(areaName.trim(), cityName.trim())
+                .map(Area::getId)
+                .orElse(null);
+    }
+
 }
