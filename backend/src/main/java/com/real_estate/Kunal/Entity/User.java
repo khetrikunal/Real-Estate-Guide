@@ -36,10 +36,16 @@ public class User {
     /** 'location_based' or 'full' — only relevant for SUB_ADMIN role */
     private String subscriptionType;
 
+    /** @deprecated Legacy geography field. To be dropped in a future release. */
+    @Deprecated
     private String assignedCity;
 
+    /** @deprecated Legacy geography field. To be dropped in a future release. */
+    @Deprecated
     private String assignedState;
 
+    /** @deprecated Legacy geography field. To be dropped in a future release. */
+    @Deprecated
     private String assignedArea;
 
     private Double subscriptionRate;

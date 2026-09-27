@@ -37,10 +37,16 @@ public class Project {
 
     private String address;
 
+    /** @deprecated Legacy geography field. To be replaced by customCity relationship. */
+    @Deprecated
     private String city;
 
+    /** @deprecated Legacy geography field. */
+    @Deprecated
     private String state;
 
+    /** @deprecated Legacy geography field. To be replaced by area relationship. */
+    @Deprecated
     private String area;
 
     private String zipCode;

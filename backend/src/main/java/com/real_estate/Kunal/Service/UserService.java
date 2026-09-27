@@ -121,9 +121,7 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(password));
         user.setRole(Role.SUB_ADMIN);
         user.setSubscriptionType(subscriptionType);
-        user.setAssignedCity(request.getAssignedCity());
-        user.setAssignedState(request.getAssignedState());
-        user.setAssignedArea(request.getAssignedArea());
+        // Stopped writing to deprecated user.assignedCity, assignedState, assignedArea (Phase 4)
         user.setSubscriptionRate(request.getSubscriptionRate());
         user.setSignupSource(request.getAddedBy() == null ? "SELF_SIGNUP" : "MANUAL");
         user.setAddedBy(request.getAddedBy());

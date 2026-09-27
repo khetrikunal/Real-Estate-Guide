@@ -50,9 +50,7 @@ public class AuthService {
             Payment payment = paymentService.getVerifiedPayment(request.getRazorpayPaymentId());
 
             user.setSubscriptionType(payment.getPlanType());
-            user.setAssignedCity(payment.getAssignedCity());
-            user.setAssignedState(payment.getAssignedState());
-            user.setAssignedArea(payment.getAssignedArea());
+            // Stopped writing to deprecated user.assignedCity, assignedState, assignedArea (Phase 4)
             user.setSubscriptionRate(payment.getSubscriptionRate());
             user.setRazorpayPaymentId(payment.getRazorpayPaymentId());
             user.setPaymentMethod("razorpay");
