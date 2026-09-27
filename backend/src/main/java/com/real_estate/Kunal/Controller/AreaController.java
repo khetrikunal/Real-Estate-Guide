@@ -57,13 +57,36 @@ public class AreaController {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Area already exists for this city");
         }
 
+        Double subscriptionRate = null;
+        if (body.get("subscriptionRate") != null && !body.get("subscriptionRate").isBlank()) {
+            try {
+                subscriptionRate = Double.parseDouble(body.get("subscriptionRate").trim());
+            } catch (NumberFormatException ignored) {}
+        }
+
         Area area = Area.builder()
                 .name(name)
                 .city(city)
                 .state(state)
+                .subscriptionRate(subscriptionRate)
+                .active(true)
                 .build();
         areaRepository.save(area);
 
+        return ResponseEntity.ok(area);
+    }
+
+    /**
+     * PATCH /api/areas/{id}/toggle-active
+     * SuperAdmin toggles area active status.
+     */
+    @PatchMapping("/{id}/toggle-active")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<?> toggleAreaActive(@PathVariable Long id) {
+        Area area = areaRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Area not found"));
+        area.setActive(!Boolean.TRUE.equals(area.getActive()));
+        areaRepository.save(area);
         return ResponseEntity.ok(area);
     }
 

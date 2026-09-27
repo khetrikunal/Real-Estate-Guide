@@ -73,6 +73,13 @@ public class LocationController {
         return locationService.addCustomCity(request);
     }
 
+    /** PATCH /api/locations/cities/{id}/toggle-active — SuperAdmin toggles city active status */
+    @PatchMapping("/cities/{id}/toggle-active")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public CustomCityResponse toggleCustomCityActive(@PathVariable("id") Long id) {
+        return locationService.toggleCustomCityActive(id);
+    }
+
     /** GET /api/locations/rate?city=X&state=Y&area=Z — returns subscription rate for a city/area */
     @GetMapping("/rate")
     public ResponseEntity<?> getLocationRate(
