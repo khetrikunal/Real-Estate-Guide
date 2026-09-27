@@ -15,4 +15,5 @@ public class CustomCityRequest {
     @Size(min = 2, max = 100)
     private String city;
 
+    private Double subscriptionRate;
 }

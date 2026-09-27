@@ -26,10 +26,17 @@ public class CustomCity {
     @Column(nullable = false)
     private String city;
 
+    /** Subscription rate in INR for this city */
+    @Column(name = "subscription_rate")
+    private Double subscriptionRate;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean active = true;
+
     /** ID of the SuperAdmin who added this city */
     private Long addedBy;
 
     @Builder.Default
     private LocalDateTime addedAt = LocalDateTime.now();
-
 }

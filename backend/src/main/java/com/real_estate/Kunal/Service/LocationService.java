@@ -1,8 +1,13 @@
 package com.real_estate.Kunal.Service;
 
+import com.real_estate.Kunal.DTO.CustomCityRequest;
+import com.real_estate.Kunal.DTO.CustomCityResponse;
 import com.real_estate.Kunal.DTO.LocationRequest;
 import com.real_estate.Kunal.DTO.MapUrlResolveResponse;
+import com.real_estate.Kunal.Entity.Area;
+import com.real_estate.Kunal.Entity.CustomCity;
 import com.real_estate.Kunal.Entity.Location;
+import com.real_estate.Kunal.Repository.AreaRepository;
 import com.real_estate.Kunal.Repository.CustomCityRepository;
 import com.real_estate.Kunal.Repository.LocationRepository;
 
@@ -33,6 +38,7 @@ public class LocationService {
 
     private final LocationRepository locationRepository;
     private final CustomCityRepository customCityRepository;
+    private final AreaRepository areaRepository;
     private final HttpClient httpClient = HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.NORMAL)
             .connectTimeout(Duration.ofSeconds(10))
@@ -298,19 +304,16 @@ public class LocationService {
 
     // ── Custom City methods ───────────────────────────────────────────────
 
-    public java.util.List<com.real_estate.Kunal.DTO.CustomCityResponse> getCustomCities(String state) {
-        java.util.List<com.real_estate.Kunal.Entity.CustomCity> cities = (state != null && !state.isBlank())
+    public java.util.List<CustomCityResponse> getCustomCities(String state) {
+        java.util.List<CustomCity> cities = (state != null && !state.isBlank())
                 ? customCityRepository.findByStateIgnoreCase(state)
                 : customCityRepository.findAllByOrderByStateAscCityAsc();
         return cities.stream()
-                .map(c -> com.real_estate.Kunal.DTO.CustomCityResponse.builder()
-                        .id(c.getId()).state(c.getState()).city(c.getCity())
-                        .addedBy(c.getAddedBy()).addedAt(c.getAddedAt())
-                        .build())
+                .map(this::toCustomCityResponse)
                 .toList();
     }
 
-    public com.real_estate.Kunal.DTO.CustomCityResponse addCustomCity(com.real_estate.Kunal.DTO.CustomCityRequest request) {
+    public CustomCityResponse addCustomCity(CustomCityRequest request) {
         String state = request.getState() != null ? request.getState().trim() : "";
         String city  = request.getCity()  != null ? request.getCity().trim()  : "";
         if (state.isBlank() || city.isBlank())
@@ -322,11 +325,34 @@ public class LocationService {
         if (customCityRepository.existsByStateIgnoreCaseAndCityIgnoreCase(state, city))
             throw new ResponseStatusException(HttpStatus.CONFLICT, "City already exists for this state");
 
-        com.real_estate.Kunal.Entity.CustomCity saved = customCityRepository.save(
-                com.real_estate.Kunal.Entity.CustomCity.builder().state(state).city(city).addedBy(currentUserId()).build());
-        return com.real_estate.Kunal.DTO.CustomCityResponse.builder()
-                .id(saved.getId()).state(saved.getState()).city(saved.getCity())
-                .addedBy(saved.getAddedBy()).addedAt(saved.getAddedAt())
+        CustomCity saved = customCityRepository.save(
+                CustomCity.builder()
+                        .state(state)
+                        .city(city)
+                        .subscriptionRate(request.getSubscriptionRate())
+                        .active(true)
+                        .addedBy(currentUserId())
+                        .build());
+        return toCustomCityResponse(saved);
+    }
+
+    public CustomCityResponse toggleCustomCityActive(Long id) {
+        CustomCity city = customCityRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "City not found"));
+        city.setActive(!Boolean.TRUE.equals(city.getActive()));
+        CustomCity saved = customCityRepository.save(city);
+        return toCustomCityResponse(saved);
+    }
+
+    private CustomCityResponse toCustomCityResponse(CustomCity c) {
+        return CustomCityResponse.builder()
+                .id(c.getId())
+                .state(c.getState())
+                .city(c.getCity())
+                .subscriptionRate(c.getSubscriptionRate())
+                .active(c.getActive())
+                .addedBy(c.getAddedBy())
+                .addedAt(c.getAddedAt())
                 .build();
     }
 
@@ -338,20 +364,38 @@ public class LocationService {
 
     /**
      * Returns the subscription rate for a given city+state, optionally with area.
-     * If area is provided, tries area-specific rate first, then falls back to city-level.
+     * Resolves against CustomCity/Area instead of the legacy Location table.
+     * Area's value overrides CustomCity's if set.
      */
     public java.util.Optional<Double> getLocationRate(String city, String state, String area) {
-        // Try area-specific rate first
-        if (area != null && !area.isBlank()) {
-            java.util.Optional<Location> areaRate = locationRepository.findByCityIgnoreCaseAndStateIgnoreCaseAndAreaIgnoreCase(city, state, area);
-            if (areaRate.isPresent() && areaRate.get().getSubscriptionRate() != null) {
-                return java.util.Optional.of(areaRate.get().getSubscriptionRate());
+        if (city == null || city.isBlank()) {
+            return java.util.Optional.empty();
+        }
+        String trimmedCity = city.trim();
+        String trimmedState = (state != null && !state.isBlank()) ? state.trim() : null;
+        String trimmedArea = (area != null && !area.isBlank()) ? area.trim() : null;
+
+        // 1. Try Area first (Area's value overrides CustomCity's if set)
+        if (trimmedArea != null) {
+            java.util.Optional<Area> areaMatch = (trimmedState != null)
+                    ? areaRepository.findByNameIgnoreCaseAndCityIgnoreCaseAndStateIgnoreCase(trimmedArea, trimmedCity, trimmedState)
+                    : areaRepository.findFirstByNameIgnoreCaseAndCityIgnoreCase(trimmedArea, trimmedCity);
+
+            if (areaMatch.isPresent() && areaMatch.get().getSubscriptionRate() != null) {
+                return java.util.Optional.of(areaMatch.get().getSubscriptionRate());
             }
         }
 
-        // Fall back to city+state rate
-        return locationRepository.findByCityIgnoreCaseAndStateIgnoreCaseAndAreaIsNull(city, state)
-                .map(Location::getSubscriptionRate);
+        // 2. Fall back to CustomCity
+        java.util.Optional<CustomCity> cityMatch = (trimmedState != null)
+                ? customCityRepository.findByStateIgnoreCaseAndCityIgnoreCase(trimmedState, trimmedCity)
+                : customCityRepository.findFirstByCityIgnoreCase(trimmedCity);
+
+        if (cityMatch.isPresent() && cityMatch.get().getSubscriptionRate() != null) {
+            return java.util.Optional.of(cityMatch.get().getSubscriptionRate());
+        }
+
+        return java.util.Optional.empty();
     }
 
 }

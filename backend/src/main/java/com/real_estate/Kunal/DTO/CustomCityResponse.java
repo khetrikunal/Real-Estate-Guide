@@ -11,6 +11,8 @@ public class CustomCityResponse {
     Long id;
     String state;
     String city;
+    Double subscriptionRate;
+    Boolean active;
     Long addedBy;
     LocalDateTime addedAt;
 }

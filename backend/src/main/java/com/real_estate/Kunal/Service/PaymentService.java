@@ -29,6 +29,7 @@ public class PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final LocationRepository locationRepository;
+    private final LocationService locationService;
     private final com.real_estate.Kunal.Repository.UserRepository userRepository;
     private final SubscriptionService subscriptionService;
 
@@ -58,20 +59,10 @@ public class PaymentService {
             // Client explicitly provided an amount
             amountInPaise = ((Number) amountObj).intValue();
         } else if ("location_based".equalsIgnoreCase(planType) && assignedCity != null && assignedState != null) {
-            // Try area-specific rate first if area is provided
-            Location location = null;
-            if (assignedArea != null && !assignedArea.isBlank()) {
-                location = locationRepository.findByCityIgnoreCaseAndAreaIgnoreCase(assignedCity, assignedArea)
-                        .orElse(null);
-            }
-            // Fall back to city+state rate
-            if (location == null || location.getSubscriptionRate() == null) {
-                location = locationRepository.findByCityIgnoreCaseAndStateIgnoreCaseAndAreaIsNull(assignedCity, assignedState)
-                        .orElseThrow(() -> new RuntimeException(
-                                "No subscription rate found for " + assignedCity + ", " + assignedState));
-            }
-            Double rate = location.getSubscriptionRate();
-            if (rate == null || rate <= 0) {
+            Double rate = locationService.getLocationRate(assignedCity, assignedState, assignedArea)
+                    .orElseThrow(() -> new RuntimeException(
+                            "No subscription rate found for " + assignedCity + (assignedArea != null ? ", " + assignedArea : "")));
+            if (rate <= 0) {
                 throw new RuntimeException("Subscription rate not configured for " + assignedCity);
             }
             amountInPaise = (int) (rate * 100); // rate in rupees → paise
@@ -276,9 +267,7 @@ public class PaymentService {
                 .orElseThrow(() -> new RuntimeException("User not found for renewal order"));
 
         user.setSubscriptionType(payment.getPlanType());
-        user.setAssignedCity(payment.getAssignedCity());
-        user.setAssignedState(payment.getAssignedState());
-        user.setAssignedArea(payment.getAssignedArea());
+        // Stopped writing to deprecated user.assignedCity, assignedState, assignedArea (Phase 4)
         user.setSubscriptionRate(payment.getSubscriptionRate());
 
         java.time.LocalDate currentExpiry = user.getSubscriptionExpiresAt();
@@ -319,16 +308,9 @@ public class PaymentService {
             String city = cities.get(i);
             String state = states.size() > i ? states.get(i) : states.get(0);
             String area = areas.size() > i ? areas.get(i) : null;
-            Location location = null;
-            if (area != null && !area.isBlank()) {
-                location = locationRepository.findByCityIgnoreCaseAndAreaIgnoreCase(city, area).orElse(null);
-            }
-            if (location == null || location.getSubscriptionRate() == null) {
-                location = locationRepository.findByCityIgnoreCaseAndStateIgnoreCaseAndAreaIsNull(city, state)
-                        .orElseThrow(() -> new RuntimeException("No subscription rate found for " + city + ", " + state));
-            }
-            Double rate = location.getSubscriptionRate();
-            if (rate == null || rate <= 0) {
+            Double rate = locationService.getLocationRate(city, state, area)
+                    .orElseThrow(() -> new RuntimeException("No subscription rate found for " + city + (area != null ? ", " + area : "")));
+            if (rate <= 0) {
                 throw new RuntimeException("Subscription rate not configured for " + city);
             }
             totalRate += rate;
