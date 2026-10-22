@@ -106,6 +106,40 @@ public class ObjectStorageService {
         return useS3() ? "s3:" + objectKey : "local:" + objectKey;
     }
 
+    public String storeProfilePhoto(
+            MultipartFile file,
+            Long userId,
+            String safeOriginalFileName,
+            String contentType
+    ) throws IOException {
+        String objectKey = "users/" + userId + "/profile/" + safeOriginalFileName;
+        storeObject(BucketType.PROJECT_DOCS, objectKey, file, contentType);
+        return useS3() ? "s3:" + objectKey : "local:" + objectKey;
+    }
+
+    public String storeProfilePhoto(
+            MultipartFile file,
+            String userIdSegment,
+            String safeOriginalFileName,
+            String contentType
+    ) throws IOException {
+        String objectKey = "users/" + userIdSegment + "/profile/" + safeOriginalFileName;
+        storeObject(BucketType.PROJECT_DOCS, objectKey, file, contentType);
+        return useS3() ? "s3:" + objectKey : "local:" + objectKey;
+    }
+
+    public String storeUnitDocument(
+            MultipartFile file,
+            Long projectId,
+            Long unitId,
+            String safeOriginalFileName,
+            String contentType
+    ) throws IOException {
+        String objectKey = "properties/" + projectId + "/units/" + unitId + "/" + safeOriginalFileName;
+        storeObject(BucketType.PROJECT_DOCS, objectKey, file, contentType);
+        return useS3() ? "s3:" + objectKey : "local:" + objectKey;
+    }
+
     public String storeKycDocument(
             MultipartFile file,
             String ownerSegment,
@@ -503,6 +537,10 @@ public class ObjectStorageService {
             return null;
         }
 
+        if (!isS3 && !useS3()) {
+            return "/api/documents/download/local/" + objectKey.replace("/", "_");
+        }
+
         // Determine bucket type from path
         String bucket = objectKey.startsWith("chat/") ? chatDocsBucket
                 : projectDocsBucket;
@@ -512,12 +550,7 @@ public class ObjectStorageService {
             return null;
         }
 
-        if (isS3 || useS3()) {
-            return String.format("https://%s.s3.%s.amazonaws.com/%s",
-                    bucket, awsRegion, objectKey);
-        }
-
-        // For local files, return a backend API endpoint URL
-        return "/api/documents/download/local/" + objectKey.replace("/", "_");
+        return String.format("https://%s.s3.%s.amazonaws.com/%s",
+                bucket, awsRegion, objectKey);
     }
 }

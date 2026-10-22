@@ -1,14 +1,12 @@
 "use client"
 
 import * as React from "react"
-import { Bell } from "lucide-react"
 import { AlertTriangle } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 
 import { cn } from "@/lib/utils"
 import type { RoleKey } from "@/lib/roles"
-import { Button } from "@/components/ui/button"
 import { estateApi } from "@app/api/estateApi"
 import { queryKeys } from "@app/api/queryKeys"
 import { useAuth } from "@app/auth/AuthContext"
@@ -36,6 +34,15 @@ export function AppTopbar({ role, onOpenCommand, onOpenProfile }: AppTopbarProps
   })
   const subscriptionWarning = subscriptionWarningText(auth.user, subscriptionDetailQ.data, subscriptionStatusQ.data)
 
+  const profilePhotoUrl = typeof (auth.user as any)?.profilePhotoUrl === "string" && (auth.user as any).profilePhotoUrl
+    ? (auth.user as any).profilePhotoUrl
+    : undefined
+  const initialChar =
+    auth.user?.name?.trim()?.charAt(0)?.toUpperCase() ??
+    (auth.user as any)?.username?.trim()?.charAt(0)?.toUpperCase() ??
+    auth.user?.email?.trim()?.charAt(0)?.toUpperCase() ??
+    "U"
+
   return (
     <header
       className={cn(
@@ -57,23 +64,18 @@ export function AppTopbar({ role, onOpenCommand, onOpenProfile }: AppTopbarProps
       </div>
 
       <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative h-9 w-9 transition-[background-color,color,opacity,transform] hover:-translate-y-0.5 active:translate-y-px focus-visible:ring-2 focus-visible:ring-ring/50"
-          aria-label="Notifications"
-        >
-          <Bell className="h-4 w-4" />
-          <span className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-amber-500" />
-        </Button>
         <button
           type="button"
           onClick={onOpenProfile}
-          className="hidden h-9 w-9 items-center justify-center rounded-full border border-amber-300/40 bg-amber-50 text-xs font-bold text-amber-800 transition-[background-color,border-color,color,opacity,transform] hover:-translate-y-0.5 hover:border-amber-400/60 hover:bg-amber-100 active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 sm:flex dark:border-amber-500/30 dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/40"
+          className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-amber-300/40 bg-amber-50 text-xs font-bold text-amber-800 transition-[background-color,border-color,color,opacity,transform] hover:-translate-y-0.5 hover:border-amber-400/60 hover:bg-amber-100 active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 dark:border-amber-500/30 dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/40"
           aria-label="Open profile drawer"
           data-click-spark="true"
         >
-          {(auth.user as any)?.name?.charAt(0)?.toUpperCase() ?? (auth.user as any)?.username?.charAt(0)?.toUpperCase() ?? "U"}
+          {profilePhotoUrl ? (
+            <img src={profilePhotoUrl} alt={auth.user?.name || "Profile"} className="h-full w-full object-cover" />
+          ) : (
+            initialChar
+          )}
         </button>
       </div>
     </header>

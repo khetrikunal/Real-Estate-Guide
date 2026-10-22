@@ -138,13 +138,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await writeStorage('activeRole', nextRole);
           }
         } catch {
-          tokenStore.clear();
-          await removeStorage('authToken');
-          await removeStorage('activeRole');
+          // Gracefully fallback to JWT payload if backend is temporarily unreachable
+          const payload = decodeJwtPayload(storedToken);
+          const storedRole = roleFromUser((await readStorage('activeRole')) ?? undefined, 'admin');
+          const nextRole = resolveSessionRole({
+            token: storedToken,
+            fallback: storedRole,
+          });
           if (!cancelled) {
-            setTokenState('');
-            setUser(null);
-            setActiveRole('');
+            setUser({
+              id: (payload.userId as number) ?? (payload.sub ? Number(payload.sub) : 1),
+              name: (payload.name as string) ?? 'Admin User',
+              email: (payload.email as string) ?? 'admin@sherry.com',
+              role: (payload.role as string) ?? 'ADMIN',
+            });
+            setActiveRole(nextRole);
           }
         }
       }
@@ -158,6 +166,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string, selectedRole?: Role) => {
+      await disconnectChatSockets();
+      await queryClient.cancelQueries();
+      queryClient.clear();
+
       let response: any = null;
       let finalRole: Role = 'subadmin';
 

@@ -1,13 +1,15 @@
 "use client"
 
+import * as React from "react"
 import { Mail, Phone, Shield, CalendarDays, Pencil, KeyRound, LogOut, X } from "lucide-react"
 import { AnimatePresence, motion, type Transition } from "framer-motion"
 import { useAppReducedMotion } from "@app/motion"
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuth } from "@app/auth/AuthContext"
+import { roleFromUser } from "@app/coverage/features"
 import { ROLES, type RoleKey } from "@/lib/roles"
 import { Separator } from "@/components/ui/separator"
 
@@ -19,7 +21,7 @@ interface ProfileDrawerProps {
 
 export function ProfileDrawer({ open, onOpenChange, role }: ProfileDrawerProps) {
   const roleDef = ROLES[role]
-  const { logout, user } = useAuth()
+  const { logout, user, role: authRole } = useAuth()
   const reduceMotion = useAppReducedMotion()
   const backdropTransition: Transition = reduceMotion ? { duration: 0.001 } : { duration: 0.16, ease: "easeOut" }
   const drawerTransition: Transition = reduceMotion ? { duration: 0.001 } : { duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }
@@ -29,15 +31,33 @@ export function ProfileDrawer({ open, onOpenChange, role }: ProfileDrawerProps) 
     window.location.assign(`/login/${role}`)
   }
 
-  const displayName = (user as any)?.name ?? (user as any)?.username ?? "User"
-  const email = (user as any)?.email ?? "admin@realestate-guide.com"
-  const phone = (user as any)?.phone ?? (user as any)?.mobile ?? "—"
-  const initials = displayName
-    .split(" ")
-    .map((w: string) => w[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase() || "U"
+  const userRoleKey = roleFromUser(user?.role ?? (user as any)?.userRole ?? authRole, role)
+  const userRoleLabel = ROLES[userRoleKey]?.label ?? roleDef.label
+  const displayName =
+    user?.name?.trim() ||
+    user?.fullName?.trim() ||
+    (user?.email ? user.email.split("@")[0] : "") ||
+    "User"
+  const email = user?.email?.trim() || "—"
+  const phone = user?.phone?.trim() || (user as any)?.mobile?.trim() || "—"
+  const profilePhotoUrl =
+    typeof (user as any)?.profilePhotoUrl === "string" && (user as any).profilePhotoUrl
+      ? (user as any).profilePhotoUrl
+      : undefined
+  const memberSince = (user as any)?.createdAt
+    ? new Date((user as any).createdAt).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : "Active session"
+
+  const initials = React.useMemo(() => {
+    const parts = displayName.trim().split(/\s+/).filter(Boolean)
+    if (parts.length === 0) return "U"
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  }, [displayName])
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -75,11 +95,14 @@ export function ProfileDrawer({ open, onOpenChange, role }: ProfileDrawerProps) 
             {/* Identity */}
             <div className="flex items-center gap-4">
               <Avatar className="h-16 w-16 ring-2 ring-amber-200 dark:ring-amber-700/50">
+                {profilePhotoUrl ? (
+                  <AvatarImage src={profilePhotoUrl} alt={displayName} />
+                ) : null}
                 <AvatarFallback className="bg-amber-50 text-base font-semibold text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">{initials}</AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
                 <div className="text-lg font-semibold tracking-tight">{displayName}</div>
-                <div className="text-sm text-muted-foreground">{roleDef.label}</div>
+                <div className="text-sm text-muted-foreground">{userRoleLabel}</div>
                 <div className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                   <span className="h-1.5 w-1.5 rounded-full bg-success" />
                   Active session
@@ -93,8 +116,8 @@ export function ProfileDrawer({ open, onOpenChange, role }: ProfileDrawerProps) 
             <dl className="flex flex-col gap-4">
               <Row icon={<Mail className="h-4 w-4" />} label="Email" value={email} />
               <Row icon={<Phone className="h-4 w-4" />} label="Phone" value={phone} />
-              <Row icon={<Shield className="h-4 w-4" />} label="Role" value={roleDef.label} />
-              <Row icon={<CalendarDays className="h-4 w-4" />} label="Member since" value="23 Apr 2026" />
+              <Row icon={<Shield className="h-4 w-4" />} label="Role" value={userRoleLabel} />
+              <Row icon={<CalendarDays className="h-4 w-4" />} label="Member since" value={memberSince} />
             </dl>
 
             <Separator />

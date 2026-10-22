@@ -22,6 +22,7 @@ import com.real_estate.Kunal.Repository.SubscriptionRepository;
 import com.real_estate.Kunal.Repository.UserRepository;
 import com.real_estate.Kunal.Security.SignedMediaUrlService;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -54,6 +55,7 @@ class ProjectServiceAccessTest {
     private final AreaRepository areaRepository = mock(AreaRepository.class);
     private final UserRepository userRepository = mock(UserRepository.class);
     private final ActivityRepository activityRepository = mock(ActivityRepository.class);
+    private final LocationService locationService = mock(LocationService.class);
     private final ProjectService service = new ProjectService(
             projectRepository,
             projectConfigRepository,
@@ -67,7 +69,20 @@ class ProjectServiceAccessTest {
             userRepository,
             activityRepository,
             mock(SignedMediaUrlService.class),
-            mock(ObjectStorageService.class));
+            mock(ObjectStorageService.class),
+            locationService);
+
+    @BeforeEach
+    void setUpLocationService() {
+        when(locationService.resolveUserCityName(any())).thenAnswer(inv -> {
+            User u = inv.getArgument(0);
+            return u != null ? u.getAssignedCity() : null;
+        });
+        when(locationService.resolveUserAreaName(any())).thenAnswer(inv -> {
+            User u = inv.getArgument(0);
+            return u != null ? u.getAssignedArea() : null;
+        });
+    }
 
     @AfterEach
     void clearSecurityContext() {

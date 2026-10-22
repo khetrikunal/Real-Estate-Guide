@@ -47,7 +47,7 @@ public class DashboardService {
         double revenue = 0.0;
 
         if (user.getRole() == Role.SUPER_ADMIN) {
-            totalProjects = projectRepository.count();
+            totalProjects = projectRepository.countByIsDeletedFalse();
             totalAdmins = userRepository.countByRole(Role.ADMIN);
             totalSubAdmins = userRepository.countByRole(Role.SUB_ADMIN);
             totalEmployees = employeeRepository.count();
@@ -56,52 +56,42 @@ public class DashboardService {
             revenue = saleRepository.sumAllAmounts();
         } else if (user.getRole() == Role.ADMIN) {
             // Admin sees their employees and projects they/employees uploaded
-            totalProjects = projectRepository.countByUploadedBy(user.getId()); // Projects uploaded by Admin
+            totalProjects = projectRepository.countByUploadedByAndIsDeletedFalse(user.getId()); // Projects uploaded by Admin
             totalEmployees = userRepository.countByAddedBy(user.getId());
             
-            List<String> employeeIds = userRepository.findByRoleAndAddedBy(Role.EMPLOYEE, user.getId())
-                .stream().map(u -> u.getId().toString()).collect(Collectors.toList());
-            employeeIds.add(user.getId().toString());
-            
-            totalLeads = leadRepository.countByAssignedEmployeeIdIn(employeeIds);
-            totalSales = saleRepository.countBySoldByUserId(user.getId()); 
-            revenue = saleRepository.sumBySoldByUserId(user.getId()); // Simplified: just admin's own sales for now? or whole team?
-            // Usually sales for whole team:
             List<Long> teamUserIds = userRepository.findByRoleAndAddedBy(Role.EMPLOYEE, user.getId())
                 .stream().map(User::getId).collect(Collectors.toList());
             teamUserIds.add(user.getId());
+            
+            totalLeads = leadRepository.countByAssignedUserIdIn(teamUserIds);
             totalSales = saleRepository.countBySoldByUserIdIn(teamUserIds);
             revenue = saleRepository.sumBySoldByUserIdIn(teamUserIds);
         } else if (user.getRole() == Role.SUB_ADMIN) {
             if ("location_based".equals(user.getSubscriptionType())) {
                 String city = user.getAssignedCity();
-                totalProjects = projectRepository.countByCityIgnoreCase(city);
+                totalProjects = projectRepository.countByCityIgnoreCaseAndIsDeletedFalse(city);
                 totalEmployees = userRepository.countByAssignedCityIgnoreCase(city);
                 totalLeads = leadRepository.countByCityIgnoreCase(city);
-                List<Long> pIds = projectRepository.findByCityIgnoreCase(city).stream().map(Project::getId).collect(Collectors.toList());
+                List<Long> pIds = projectRepository.findByCityIgnoreCaseAndIsDeletedFalse(city).stream().map(Project::getId).collect(Collectors.toList());
                 totalSales = pIds.isEmpty() ? 0 : saleRepository.countByProjectIdIn(pIds);
                 revenue = pIds.isEmpty() ? 0 : saleRepository.sumByProjectIdIn(pIds);
             } else {
-                totalProjects = projectRepository.count();
+                totalProjects = projectRepository.countByIsDeletedFalse();
                 totalEmployees = userRepository.countByAddedBy(user.getId());
-                
-                List<String> employeeIds = userRepository.findByRoleAndAddedBy(Role.EMPLOYEE, user.getId())
-                    .stream().map(u -> u.getId().toString()).collect(Collectors.toList());
-                employeeIds.add(user.getId().toString());
-                
-                totalLeads = leadRepository.countByAssignedEmployeeIdIn(employeeIds);
                 
                 List<Long> teamUserIds = userRepository.findByRoleAndAddedBy(Role.EMPLOYEE, user.getId())
                     .stream().map(User::getId).collect(Collectors.toList());
                 teamUserIds.add(user.getId());
+                
+                totalLeads = leadRepository.countByAssignedUserIdIn(teamUserIds);
                 totalSales = teamUserIds.isEmpty() ? 0 : saleRepository.countBySoldByUserIdIn(teamUserIds);
                 revenue = teamUserIds.isEmpty() ? 0 : saleRepository.sumBySoldByUserIdIn(teamUserIds);
             }
         } else {
             // Employee
-            totalProjects = projectRepository.countByUploadedBy(user.getId());
+            totalProjects = projectRepository.countByUploadedByAndIsDeletedFalse(user.getId());
             totalEmployees = 0;
-            totalLeads = leadRepository.countByAssignedEmployeeId(user.getId().toString());
+            totalLeads = leadRepository.countByAssignedUserId(user.getId());
             totalSales = saleRepository.countBySoldByUserId(user.getId());
             revenue = saleRepository.sumBySoldByUserId(user.getId());
         }

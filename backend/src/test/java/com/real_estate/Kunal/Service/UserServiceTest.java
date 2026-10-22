@@ -49,7 +49,8 @@ class UserServiceTest {
                 mock(PaymentRepository.class),
                 mock(ProjectRepository.class),
                 mock(UserKycDocumentRepository.class),
-                mock(KycDocumentService.class)
+                mock(KycDocumentService.class),
+                mock(LocationService.class)
         );
 
         assertThatThrownBy(() -> service.createAdmin(request))
@@ -83,7 +84,8 @@ class UserServiceTest {
                 mock(PaymentRepository.class),
                 mock(ProjectRepository.class),
                 mock(UserKycDocumentRepository.class),
-                kycDocumentService
+                kycDocumentService,
+                mock(LocationService.class)
         );
 
         assertThatThrownBy(() -> service.updateKycStatus(10L, "VERIFIED", 1L, null))

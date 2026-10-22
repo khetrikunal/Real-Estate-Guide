@@ -37,6 +37,15 @@ public class DocumentService {
     public List<ProjectDocument> uploadDocuments(Long projectId,
                                                   MultipartFile[] files,
                                                   Long uploadedBy) throws IOException {
+        return uploadDocuments(projectId, files, uploadedBy, "PROPERTY", null, null);
+    }
+
+    public List<ProjectDocument> uploadDocuments(Long projectId,
+                                                  MultipartFile[] files,
+                                                  Long uploadedBy,
+                                                  String documentLevel,
+                                                  String documentCategory,
+                                                  Long buildingId) throws IOException {
         Project project = projectService.findProjectEntity(projectId);
         projectService.ensureCanModifyProject(project);
 
@@ -70,6 +79,9 @@ public class DocumentService {
                     .fileType(validatedUpload.contentType())
                     .filePath(storedPath)
                     .projectId(projectId)
+                    .buildingId(buildingId)
+                    .documentLevel(documentLevel != null ? documentLevel : "PROPERTY")
+                    .documentCategory(documentCategory)
                     .uploadedBy(uploadedBy)
                     .fileSize(file.getSize())
                     .uploadedAt(LocalDateTime.now())

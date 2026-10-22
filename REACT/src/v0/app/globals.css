@@ -493,11 +493,11 @@
   --ref-surface: rgba(255, 253, 248, 0.88);
   --ref-surface-strong: rgba(255, 252, 244, 0.96);
   --ref-surface-soft: rgba(201, 168, 76, 0.06);
-  --ref-border: rgba(160, 120, 40, 0.14);
-  --ref-border-strong: rgba(160, 120, 40, 0.24);
-  --ref-text: rgba(28, 20, 8, 0.92);
-  --ref-text-muted: rgba(28, 20, 8, 0.58);
-  --ref-text-faint: rgba(28, 20, 8, 0.36);
+  --ref-border: rgba(160, 120, 40, 0.22);
+  --ref-border-strong: rgba(160, 120, 40, 0.32);
+  --ref-text: rgba(28, 20, 8, 0.94);
+  --ref-text-muted: rgba(28, 20, 8, 0.74);
+  --ref-text-faint: rgba(28, 20, 8, 0.52);
   --ref-gold-soft: rgba(201, 168, 76, 0.10);
   --ref-success: #1a7a42;
   --ref-warning: #b86e12;
@@ -510,7 +510,7 @@
 }
 
 /* ============================================================
-   Critical: Add Project (and all v0 forms) font visibility fix
+   Critical: Form & Modal Font Visibility and Contrast Fix
    Prevent black-on-black / dark-on-dark text in inputs/selects.
    ============================================================ */
 
@@ -531,6 +531,70 @@
 .reference-add-project-page label {
   color: #374151 !important;
   font-weight: 500 !important;
+}
+
+/* Dialog, Modal, & Location Management font visibility and contrast */
+[role="dialog"],
+[data-slot="dialog-content"] {
+  color: var(--foreground) !important;
+}
+
+[role="dialog"] [data-slot="dialog-title"] {
+  color: var(--foreground) !important;
+}
+
+[role="dialog"] [data-slot="dialog-description"] {
+  color: var(--muted-foreground) !important;
+}
+
+[role="dialog"] label {
+  color: var(--foreground) !important;
+  font-weight: 600 !important;
+}
+
+[role="dialog"] input,
+[role="dialog"] textarea,
+[role="dialog"] [data-slot="select-trigger"],
+[role="dialog"] [role="combobox"] {
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+  border-color: var(--border) !important;
+}
+
+[role="dialog"] input:focus,
+[role="dialog"] textarea:focus,
+[role="dialog"] [data-slot="select-trigger"]:focus-visible {
+  border-color: var(--ring) !important;
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring), transparent 75%) !important;
+}
+
+[role="dialog"] input::placeholder,
+[role="dialog"] textarea::placeholder,
+[role="dialog"] [data-slot="select-trigger"][data-placeholder],
+[role="dialog"] [data-slot="select-trigger"][data-placeholder] * {
+  color: var(--muted-foreground) !important;
+  opacity: 1 !important;
+}
+
+[role="dialog"] [data-slot="select-trigger"]:not([data-placeholder]),
+[role="dialog"] [data-slot="select-trigger"]:not([data-placeholder]) * {
+  color: var(--foreground) !important;
+  font-weight: 500 !important;
+}
+
+[data-slot="select-content"] {
+  background-color: var(--popover) !important;
+  color: var(--popover-foreground) !important;
+  border-color: var(--border) !important;
+}
+
+[data-slot="select-item"] {
+  color: var(--popover-foreground) !important;
+}
+
+[data-slot="select-item"][data-highlighted] {
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
 }
 
 .reference-add-project-page select option {
@@ -1038,6 +1102,7 @@
   height: 100%;
   width: 100%;
   background: #101720;
+  font-family: inherit;
 }
 
 .reference-leaflet-map .leaflet-control-attribution,

@@ -91,15 +91,42 @@ public class ProjectService {
         String normalizedBuilderNumber = normalizeAndValidateBuilderNumber(request.getBuilderNumber());
 
 
-        project.setProjectName(request.getProjectName());
+        String projectName = request.getProjectName();
+        if (projectName == null || projectName.isBlank()) {
+            if ("LAND".equalsIgnoreCase(request.getPropertyCategory()) || "PLOT".equalsIgnoreCase(request.getPropertyCategory())) {
+                if (request.getPlotNumber() != null && !request.getPlotNumber().isBlank()) {
+                    projectName = "Plot " + request.getPlotNumber().trim();
+                } else if (request.getSurveyNumber() != null && !request.getSurveyNumber().isBlank()) {
+                    projectName = "Survey No. " + request.getSurveyNumber().trim();
+                } else if (request.getArea() != null && !request.getArea().isBlank()) {
+                    projectName = "Land at " + request.getArea().trim();
+                } else {
+                    projectName = "Land Parcel";
+                }
+            } else {
+                projectName = "Unnamed Project";
+            }
+        }
+        project.setProjectName(projectName);
         project.setLocationId(resolvedLocationId);
         project.setDescription(request.getDescription());
         project.setUploadedBy(user != null ? user.getId() : request.getUploadedBy());
         project.setModifiedBy(user != null ? user.getId() : request.getUploadedBy());
         project.setAddress(request.getAddress());
-        project.setCity(request.getCity());
-        project.setArea(normalizeOptionalText(request.getArea()));
-        project.setState(request.getState());
+
+        Location resolvedLocation = resolvedLocationId != null
+                ? locationRepository.findById(resolvedLocationId).orElse(null)
+                : null;
+        if (resolvedLocation != null) {
+            project.setCity(resolvedLocation.getCity());
+            project.setArea(resolvedLocation.getArea());
+            project.setState(resolvedLocation.getState());
+        } else {
+            project.setCity(request.getCity());
+            project.setArea(normalizeOptionalText(request.getArea()));
+            project.setState(request.getState());
+        }
+
         project.setZipCode(request.getZipCode());
         project.setGoogleMapsUrl(request.getGoogleMapsUrl());
 
@@ -117,6 +144,26 @@ public class ProjectService {
         project.setCarpetArea(request.getCarpetArea());
         project.setBuiltUpArea(request.getBuiltUpArea());
         project.setSuperBuiltUpArea(request.getSuperBuiltUpArea());
+
+        if (request.getBuilderEmail() != null) project.setBuilderEmail(request.getBuilderEmail().trim());
+        if (request.getPropertyType() != null) project.setPropertyType(request.getPropertyType().trim());
+        if (request.getApartmentName() != null) project.setApartmentName(request.getApartmentName().trim());
+        if (request.getTotalLandArea() != null) project.setTotalLandArea(request.getTotalLandArea());
+        if (request.getTotalLandAreaUnit() != null) project.setTotalLandAreaUnit(request.getTotalLandAreaUnit().trim());
+        if (request.getTotalBuiltUpArea() != null) project.setTotalBuiltUpArea(request.getTotalBuiltUpArea());
+
+        project.setPlotNumber(request.getPlotNumber());
+        project.setSurveyNumber(request.getSurveyNumber());
+        project.setPlotDimensions(request.getPlotDimensions());
+        project.setOwnershipType(request.getOwnershipType());
+        project.setHasMultipleTowers(request.getHasMultipleTowers() != null ? request.getHasMultipleTowers() : false);
+        project.setTowerCount(request.getTowerCount());
+
+        String propCode = request.getPropertyCode();
+        if (propCode == null || propCode.isBlank()) {
+            propCode = "PROP-" + (System.currentTimeMillis() % 1000000);
+        }
+        project.setPropertyCode(propCode);
 
         validateCoordinates(request.getLatitude(), request.getLongitude());
         project.setLatitude(request.getLatitude());
@@ -181,7 +228,13 @@ public class ProjectService {
                         .build();
                 savedProject.getConfigs().add(config);
             }
-            savedProject = projectRepository.save(savedProject);
+            savedProject = projectRepository.saveAndFlush(savedProject);
+            for (ProjectConfig config : savedProject.getConfigs()) {
+                if (config.getId() == null) {
+                    ProjectConfig savedConfig = projectConfigRepository.saveAndFlush(config);
+                    config.setId(savedConfig.getId());
+                }
+            }
             syncUnitsForProject(savedProject, request.getConfigs());
         }
         
@@ -203,9 +256,9 @@ public class ProjectService {
         User user = getCurrentUser();
         assertActiveSubadminSubscription(user);
         if (isOwnScopedRole(user)) {
-            return toProjectResponses(projectRepository.findByUploadedBy(user.getId()));
+            return toProjectResponses(projectRepository.findByUploadedByAndIsDeletedFalse(user.getId()));
         }
-        return toProjectResponses(projectRepository.findAll());
+        return toProjectResponses(projectRepository.findByIsDeletedFalse());
     }
 
     public ProjectResponse getProjectById(Long id) {
@@ -227,14 +280,25 @@ public class ProjectService {
         String normalizedBuilderNumber = normalizeAndValidateBuilderNumber(request.getBuilderNumber());
 
 
-        project.setProjectName(request.getProjectName());
+        if (request.getProjectName() != null && !request.getProjectName().isBlank()) {
+            project.setProjectName(request.getProjectName().trim());
+        }
         project.setLocationId(resolvedLocationId);
         project.setDescription(request.getDescription());
         project.setModifiedBy(user != null ? user.getId() : null);
         project.setAddress(request.getAddress());
-        project.setCity(request.getCity());
-        project.setArea(normalizeOptionalText(request.getArea()));
-        project.setState(request.getState());
+
+        Location resolvedLocation = locationRepository.findById(resolvedLocationId).orElse(null);
+        if (resolvedLocation != null) {
+            project.setCity(resolvedLocation.getCity());
+            project.setArea(resolvedLocation.getArea());
+            project.setState(resolvedLocation.getState());
+        } else {
+            project.setCity(request.getCity());
+            project.setArea(normalizeOptionalText(request.getArea()));
+            project.setState(request.getState());
+        }
+
         project.setZipCode(request.getZipCode());
         project.setGoogleMapsUrl(request.getGoogleMapsUrl());
 
@@ -277,6 +341,23 @@ public class ProjectService {
         project.setBuiltUpArea(request.getBuiltUpArea());
         project.setSuperBuiltUpArea(request.getSuperBuiltUpArea());
 
+        if (request.getBuilderEmail() != null) project.setBuilderEmail(request.getBuilderEmail().trim());
+        if (request.getPropertyType() != null) project.setPropertyType(request.getPropertyType().trim());
+        if (request.getApartmentName() != null) project.setApartmentName(request.getApartmentName().trim());
+        if (request.getTotalLandArea() != null) project.setTotalLandArea(request.getTotalLandArea());
+        if (request.getTotalLandAreaUnit() != null) project.setTotalLandAreaUnit(request.getTotalLandAreaUnit().trim());
+        if (request.getTotalBuiltUpArea() != null) project.setTotalBuiltUpArea(request.getTotalBuiltUpArea());
+        if (request.getPropertyCode() != null && !request.getPropertyCode().isBlank()) {
+            project.setPropertyCode(request.getPropertyCode().trim());
+        }
+
+        if (request.getPlotNumber() != null) project.setPlotNumber(request.getPlotNumber().trim());
+        if (request.getSurveyNumber() != null) project.setSurveyNumber(request.getSurveyNumber().trim());
+        if (request.getPlotDimensions() != null) project.setPlotDimensions(request.getPlotDimensions().trim());
+        if (request.getOwnershipType() != null) project.setOwnershipType(request.getOwnershipType().trim());
+        if (request.getHasMultipleTowers() != null) project.setHasMultipleTowers(request.getHasMultipleTowers());
+        if (request.getTowerCount() != null) project.setTowerCount(request.getTowerCount());
+
 
         if (user != null
                 && user.getRole() == Role.SUB_ADMIN
@@ -301,11 +382,14 @@ public class ProjectService {
 
         // Update configs
         if (request.getConfigs() != null) {
+            projectUnitRepository.deleteByProjectId(project.getId());
+            projectUnitRepository.flush();
             if (project.getConfigs() == null) {
                 project.setConfigs(new ArrayList<>());
             } else {
                 project.getConfigs().clear();
             }
+            projectRepository.saveAndFlush(project);
             for (ProjectConfigDTO dto : request.getConfigs()) {
                 ProjectConfig config = ProjectConfig.builder()
                         .project(project)
@@ -328,28 +412,135 @@ public class ProjectService {
             }
         }
 
-        Project savedProject = projectRepository.save(project);
+        Project savedProject = projectRepository.saveAndFlush(project);
         if (request.getConfigs() != null) {
+            if (savedProject.getConfigs() != null) {
+                for (ProjectConfig config : savedProject.getConfigs()) {
+                    if (config.getId() == null) {
+                        ProjectConfig savedConfig = projectConfigRepository.saveAndFlush(config);
+                        config.setId(savedConfig.getId());
+                    }
+                }
+            }
             syncUnitsForProject(savedProject, request.getConfigs());
         }
         return toProjectResponse(savedProject);
     }
 
     @Transactional
-    public void deleteProject(Long id) {
+    public ProjectResponse moveToTrash(Long id) {
         Project project = findProjectEntity(id);
-
         ensureCanModifyProject(project);
+
+        if (!Boolean.TRUE.equals(project.getIsDeleted())) {
+            User user = getCurrentUser();
+            project.setIsDeleted(true);
+            project.setDeletedAt(LocalDateTime.now());
+            if (user != null) {
+                project.setModifiedBy(user.getId());
+            }
+            project = projectRepository.save(project);
+
+            if (user != null) {
+                activityRepository.save(Activity.builder()
+                        .type("PROJECT_TRASHED")
+                        .description(user.getName() + " moved project '" + project.getProjectName() + "' to Trash")
+                        .userName(user.getName())
+                        .projectName(project.getProjectName())
+                        .city(project.getCity())
+                        .timestamp(LocalDateTime.now())
+                        .userId(user.getId())
+                        .build());
+            }
+        }
+
+        return toProjectResponse(project);
+    }
+
+    @Transactional
+    public ProjectResponse restoreProject(Long id) {
+        Project project = findProjectEntity(id);
+        ensureCanModifyProject(project);
+
+        if (Boolean.TRUE.equals(project.getIsDeleted())) {
+            User user = getCurrentUser();
+            project.setIsDeleted(false);
+            project.setDeletedAt(null);
+            if (user != null) {
+                project.setModifiedBy(user.getId());
+            }
+            project = projectRepository.save(project);
+
+            if (user != null) {
+                activityRepository.save(Activity.builder()
+                        .type("PROJECT_RESTORED")
+                        .description(user.getName() + " restored project '" + project.getProjectName() + "' from Trash")
+                        .userName(user.getName())
+                        .projectName(project.getProjectName())
+                        .city(project.getCity())
+                        .timestamp(LocalDateTime.now())
+                        .userId(user.getId())
+                        .build());
+            }
+        }
+
+        return toProjectResponse(project);
+    }
+
+    public List<ProjectResponse> getTrashProjects() {
+        User user = getCurrentUser();
+        assertActiveSubadminSubscription(user);
+        if (isOwnScopedRole(user)) {
+            return toProjectResponses(projectRepository.findByUploadedByAndIsDeletedTrueOrderByDeletedAtDesc(user.getId()));
+        }
+        return toProjectResponses(projectRepository.findByIsDeletedTrueOrderByDeletedAtDesc());
+    }
+
+    @Transactional
+    public void deleteProjectPermanently(Long id) {
+        Project project = findProjectEntity(id);
+        ensureCanModifyProject(project);
+
+        // Check dependencies - prevent deletion if sales records exist
+        List<Sale> sales = saleRepository.findByProjectId(id);
+        if (!sales.isEmpty()) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Cannot permanently delete project '" + project.getProjectName() + "' because it has "
+                            + sales.size() + " recorded sales transaction(s). Projects with financial or sales records cannot be permanently purged."
+            );
+        }
 
         List<ProjectDocument> documents = projectDocumentRepository.findByProjectId(id);
         for (ProjectDocument document : documents) {
             if (document.getFilePath() != null && !document.getFilePath().isBlank()) {
-                objectStorageService.deleteProjectDocument(document.getFilePath());
+                try {
+                    objectStorageService.deleteProjectDocument(document.getFilePath());
+                } catch (Exception ignored) {
+                }
             }
         }
         projectDocumentRepository.deleteByProjectId(id);
         projectUnitRepository.deleteByProjectId(id);
+
+        User user = getCurrentUser();
+        if (user != null) {
+            activityRepository.save(Activity.builder()
+                    .type("PROJECT_PERMANENTLY_DELETED")
+                    .description(user.getName() + " permanently deleted project '" + project.getProjectName() + "'")
+                    .userName(user.getName())
+                    .projectName(project.getProjectName())
+                    .city(project.getCity())
+                    .timestamp(LocalDateTime.now())
+                    .userId(user.getId())
+                    .build());
+        }
+
         projectRepository.delete(project);
+    }
+
+    public void deleteProject(Long id) {
+        moveToTrash(id);
     }
 
     public List<ProjectResponse> searchProjects(
@@ -408,7 +599,7 @@ public class ProjectService {
         User broker = userRepository.findById(brokerId).orElse(null);
         if (broker != null && broker.getRole() == Role.SUB_ADMIN) {
             assertActiveSubadminSubscription(broker);
-            return toProjectResponses(projectRepository.findByUploadedBy(broker.getId()));
+            return toProjectResponses(projectRepository.findByUploadedByAndIsDeletedFalse(broker.getId()));
         }
 
         Subscription subscription = subscriptionRepository
@@ -420,7 +611,7 @@ public class ProjectService {
         }
 
         if (subscription.getPlanType() == PlanType.ALL) {
-            return toProjectResponses(projectRepository.findAll());
+            return toProjectResponses(projectRepository.findByIsDeletedFalse());
         }
 
         List<Long> locationIds = brokerLocationRepository.findByBrokerId(brokerId)
@@ -432,7 +623,7 @@ public class ProjectService {
             return Collections.emptyList();
         }
 
-        return toProjectResponses(projectRepository.findByLocationIdIn(locationIds));
+        return toProjectResponses(projectRepository.findByLocationIdInAndIsDeletedFalse(locationIds));
     }
 
     public List<ProjectResponse> getEmployeeProjects(Long employeeId) {
@@ -441,7 +632,7 @@ public class ProjectService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Employees can only access their own projects");
         }
         assertActiveSubadminSubscription(user);
-        return toProjectResponses(projectRepository.findByUploadedBy(employeeId));
+        return toProjectResponses(projectRepository.findByUploadedByAndIsDeletedFalse(employeeId));
     }
 
     public List<ProjectResponse> getProjectsByUploader(Long uploaderId) {
@@ -451,7 +642,7 @@ public class ProjectService {
                 && !Objects.equals(user.getId(), uploaderId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only access your own projects");
         }
-        return toProjectResponses(projectRepository.findByUploadedBy(uploaderId));
+        return toProjectResponses(projectRepository.findByUploadedByAndIsDeletedFalse(uploaderId));
     }
 
     public List<ProjectDocumentResponse> getProjectDocumentResponses(Long projectId) {
@@ -819,6 +1010,7 @@ public class ProjectService {
                             .id(project.getId())
                             .projectName(project.getProjectName())
                             .locationId(project.getLocationId())
+                            .locationPricing(resolveLocationPricing(project))
                             .description(project.getDescription())
                             .uploadedBy(project.getUploadedBy())
                             .addedByName(uploader != null ? uploader.getName() : null)
@@ -838,8 +1030,29 @@ public class ProjectService {
                             .latitude(project.getLatitude())
                             .longitude(project.getLongitude())
                             .coverPhotoUrl(projectCoverPhotoUrl(project))
+                            .propertyCategory(project.getPropertyCategory())
+                            .propertySubcategory(project.getPropertySubcategory())
+                            .possessionDate(project.getPossessionDate())
+                            .projectStatus(project.getProjectStatus())
+                            .pricePerSqFt(project.getPricePerSqft())
+                            .carpetArea(project.getCarpetArea())
+                            .builtUpArea(project.getBuiltUpArea())
+                            .superBuiltUpArea(project.getSuperBuiltUpArea())
+                            .plotNumber(project.getPlotNumber())
+                            .surveyNumber(project.getSurveyNumber())
+                            .plotDimensions(project.getPlotDimensions())
+                            .ownershipType(project.getOwnershipType())
+                            .hasMultipleTowers(project.getHasMultipleTowers())
+                            .towerCount(project.getTowerCount())
                             .builderName(project.getBuilderName())
                             .builderNumber(project.getBuilderNumber())
+                            .builderEmail(project.getBuilderEmail())
+                            .propertyType(project.getPropertyType())
+                            .apartmentName(project.getApartmentName())
+                            .totalLandArea(project.getTotalLandArea())
+                            .totalLandAreaUnit(project.getTotalLandAreaUnit())
+                            .totalBuiltUpArea(project.getTotalBuiltUpArea())
+                            .propertyCode(project.getPropertyCode())
                             .totalUnits(project.getTotalUnits())
                             .unitsSold(project.getUnitsSold())
                             .price(project.getPrice())
@@ -884,6 +1097,8 @@ public class ProjectService {
                                             })
                                             .toList()
                                     : Collections.emptyList())
+                            .isDeleted(Boolean.TRUE.equals(project.getIsDeleted()))
+                            .deletedAt(project.getDeletedAt())
                             .build();
                 })
                 .toList();
@@ -900,6 +1115,9 @@ public class ProjectService {
                 .fileUrl(signedMediaUrlService.signPath(fileUrl))
                 .projectId(document.getProjectId())
                 .configId(document.getConfigId())
+                .buildingId(document.getBuildingId())
+                .documentLevel(document.getDocumentLevel())
+                .documentCategory(document.getDocumentCategory())
                 .uploadedBy(document.getUploadedBy())
                 .fileSize(document.getFileSize())
                 .uploadedAt(document.getUploadedAt())
@@ -989,12 +1207,17 @@ public class ProjectService {
 
     private void syncUnitsForProject(Project project, List<ProjectConfigDTO> configDtos) {
         projectUnitRepository.deleteByProjectId(project.getId());
+        projectUnitRepository.flush();
         if (project.getConfigs() == null || project.getConfigs().isEmpty()) {
             return;
         }
         List<ProjectConfig> configs = project.getConfigs();
         for (int i = 0; i < configs.size(); i++) {
             ProjectConfig config = configs.get(i);
+            if (config.getId() == null) {
+                ProjectConfig savedConfig = projectConfigRepository.saveAndFlush(config);
+                config.setId(savedConfig.getId());
+            }
             ProjectConfigDTO dto = configDtos != null && i < configDtos.size() ? configDtos.get(i) : null;
             List<String> labels = dto != null ? dto.getUnitLabels() : null;
             int unitCount = Math.max(0, config.getUnits());
@@ -1015,6 +1238,7 @@ public class ProjectService {
             config.setUnitsSold(0);
             projectConfigRepository.save(config);
         }
+        projectUnitRepository.flush();
     }
 
     private String defaultUnitLabel(ProjectConfig config, int index) {
@@ -1038,9 +1262,31 @@ public class ProjectService {
                 .build();
     }
 
+    private Double resolveLocationPricing(Project project) {
+        if (project.getLocation() != null && project.getLocation().getSubscriptionRate() != null) {
+            return project.getLocation().getSubscriptionRate();
+        }
+        if (project.getLocationId() != null) {
+            return locationRepository.findById(project.getLocationId())
+                    .map(Location::getSubscriptionRate)
+                    .orElse(null);
+        }
+        return null;
+    }
+
     private Long resolveLocationIdOrThrow(ProjectRequest request, Long currentLocationId) {
         if (request.getLocationId() != null) {
-            return request.getLocationId();
+            Location loc = locationRepository.findById(request.getLocationId()).orElse(null);
+            if (loc != null) {
+                request.setState(loc.getState());
+                request.setCity(loc.getCity());
+                request.setArea(loc.getArea());
+                return loc.getId();
+            }
+            if (request.getCity() != null && !request.getCity().isBlank()) {
+                return request.getLocationId();
+            }
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selected location not found. Please select an existing location.");
         }
         String city = request.getCity() != null ? request.getCity().trim() : "";
         String area = request.getArea() != null ? request.getArea().trim() : "";
@@ -1050,7 +1296,14 @@ public class ProjectService {
             if (currentLocationId != null) {
                 return currentLocationId;
             }
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Location is required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Location is required. Please select an existing location.");
+        }
+
+        if (!area.isEmpty() && !state.isEmpty()) {
+            java.util.Optional<Location> found = locationRepository.findByCityIgnoreCaseAndStateIgnoreCaseAndAreaIgnoreCase(city, state, area);
+            if (found.isPresent()) {
+                return found.get().getId();
+            }
         }
 
         if (!area.isEmpty()) {
@@ -1059,7 +1312,11 @@ public class ProjectService {
                     .orElseGet(() -> fallbackLocationByStateOrCity(city, state, currentLocationId));
         }
 
-        return fallbackLocationByStateOrCity(city, state, currentLocationId);
+        Long foundId = fallbackLocationByStateOrCity(city, state, currentLocationId);
+        if (foundId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selected location not found. Please select an existing location.");
+        }
+        return foundId;
     }
 
     private Long fallbackLocationByStateOrCity(String city, String state, Long currentLocationId) {

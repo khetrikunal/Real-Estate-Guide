@@ -165,11 +165,16 @@
   overflow: auto;
 }
 
-.reference-page-panel,
-.reference-section,
-.reference-card,
-.reference-stat-card,
-.reference-table {
+.reference-shell .reference-page-panel,
+.reference-shell .reference-section,
+.reference-shell .reference-card,
+.reference-shell .reference-stat-card,
+.reference-shell .reference-table,
+.dark .reference-page-panel,
+.dark .reference-section,
+.dark .reference-card,
+.dark .reference-stat-card,
+.dark .reference-table {
   border: 1px solid var(--ref-border);
   background: linear-gradient(180deg, rgba(12, 12, 15, 0.78), rgba(7, 7, 9, 0.74));
   box-shadow: var(--ref-shadow-card);
@@ -209,7 +214,8 @@
   border-radius: var(--ref-radius-card);
 }
 
-.reference-page-title {
+.reference-shell .reference-page-title,
+.dark .reference-page-title {
   color: var(--ref-text);
   font-size: clamp(36px, 3.8vw, 58px);
   font-weight: 800;
@@ -217,7 +223,8 @@
   letter-spacing: 0;
 }
 
-.reference-section-title {
+.reference-shell .reference-section-title,
+.dark .reference-section-title {
   color: var(--ref-text);
   font-size: 24px;
   font-weight: 780;
@@ -225,7 +232,8 @@
   letter-spacing: 0;
 }
 
-.reference-eyebrow {
+.reference-shell .reference-eyebrow,
+.dark .reference-eyebrow {
   color: var(--ref-text-muted);
   font-size: 13px;
   font-weight: 700;
@@ -233,13 +241,15 @@
   text-transform: uppercase;
 }
 
-.reference-body-copy {
+.reference-shell .reference-body-copy,
+.dark .reference-body-copy {
   color: var(--ref-text-muted);
   font-size: 17px;
   line-height: 1.45;
 }
 
-.reference-muted-copy {
+.reference-shell .reference-muted-copy,
+.dark .reference-muted-copy {
   color: var(--ref-text-faint);
   font-size: 14px;
 }
@@ -671,24 +681,24 @@ td[data-kind="number"],
   background: color-mix(in oklch, var(--surface), transparent 8%);
 }
 
-input,
-select,
-textarea,
-.field-input,
-.field-select,
-.search-input {
+.legacy-ui input,
+.legacy-ui select,
+.legacy-ui textarea,
+.legacy-ui .field-input,
+.legacy-ui .field-select,
+.legacy-ui .search-input {
   border-color: var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface-inset);
   color: var(--text);
 }
 
-input:focus,
-select:focus,
-textarea:focus,
-.field-input:focus,
-.field-select:focus,
-.search-input:focus {
+.legacy-ui input:focus,
+.legacy-ui select:focus,
+.legacy-ui textarea:focus,
+.legacy-ui .field-input:focus,
+.legacy-ui .field-select:focus,
+.legacy-ui .search-input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px color-mix(in oklch, var(--accent), transparent 82%);
 }
@@ -1169,15 +1179,10 @@ textarea:focus,
   --glass-highlight: rgba(255, 255, 255, 0.74);
 }
 
-html,
-body {
+.legacy-ui {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-ui);
-}
-
-body {
-  background: var(--bg);
 }
 
 ::selection {

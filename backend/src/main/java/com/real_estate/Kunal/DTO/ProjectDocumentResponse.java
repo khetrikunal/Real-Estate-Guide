@@ -15,6 +15,9 @@ public class ProjectDocumentResponse {
     String fileUrl;
     Long projectId;
     Long configId;
+    Long buildingId;
+    String documentLevel;
+    String documentCategory;
     Long uploadedBy;
     Long fileSize;
     LocalDateTime uploadedAt;

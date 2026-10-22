@@ -14,6 +14,7 @@ public class ProjectResponse {
     Long id;
     String projectName;
     Long locationId;
+    Double locationPricing;
     String description;
     Long uploadedBy;
     String addedByName;
@@ -54,9 +55,28 @@ public class ProjectResponse {
     Integer totalUnits;
     Integer unitsSold;
     String builderName;
-
     String builderNumber;
+    String builderEmail;
+    String propertyType;
+    String apartmentName;
+    Double totalLandArea;
+    String totalLandAreaUnit;
+    Double totalBuiltUpArea;
+    String propertyCode;
+
+    // Land & Plot specific
+    String plotNumber;
+    String surveyNumber;
+    String plotDimensions;
+    String ownershipType;
+
+    // Building & Tower specific
+    Boolean hasMultipleTowers;
+    Integer towerCount;
+
     List<ProjectDocumentResponse> documents;
     List<SaleRecordResponse> sales;
     List<ProjectConfigDTO> configs;
+    Boolean isDeleted;
+    LocalDateTime deletedAt;
 }

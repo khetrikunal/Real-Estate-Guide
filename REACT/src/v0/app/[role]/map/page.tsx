@@ -334,7 +334,7 @@ function MarkerHoverCard({ project, exact }: { project: Property; exact: boolean
       <div className="min-w-0">
         <div className="truncate text-sm font-semibold text-foreground">{project.name}</div>
         <div className="line-clamp-2 text-xs text-muted-foreground">{project.address || [project.city, project.area].filter(Boolean).join(" · ")}</div>
-        {!exact ? <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">City fallback</div> : null}
+        {!exact ? <div className="mt-1 text-xs uppercase tracking-[0.15em] text-muted-foreground">City fallback</div> : null}
       </div>
     </div>
   )

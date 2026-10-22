@@ -61,7 +61,7 @@ public class AuthController {
                 }
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
             }
-            throw ex;
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", ex.getMessage() != null ? ex.getMessage() : "Invalid credentials"));
         }
         String token = authService.generateJwt(user);
         String firebaseToken = firebaseCustomTokenService.isInitialized()

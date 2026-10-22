@@ -6,6 +6,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.MediaType;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -24,7 +25,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private static final List<RateLimitRule> RULES = List.of(
-            new RateLimitRule("POST", "/api/auth/login", 5, Duration.ofMinutes(1)),
             new RateLimitRule("POST", "/api/auth/register", 3, Duration.ofMinutes(1)),
             new RateLimitRule("POST", "/api/auth/forgot-password/send-otp", 5, Duration.ofMinutes(1)),
             new RateLimitRule("POST", "/api/chat/upload", 20, Duration.ofMinutes(1)),
@@ -40,6 +40,19 @@ public class RateLimitFilter extends OncePerRequestFilter {
             new ConcurrentHashMap<>();
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final boolean loginRateLimitEnabled;
+    private final int loginMaxRequests;
+    private final Duration loginWindow;
+
+    public RateLimitFilter(
+            @Value("${app.security.login-rate-limit.enabled:true}") boolean loginRateLimitEnabled,
+            @Value("${app.security.login-rate-limit.max-requests:5}") int loginMaxRequests,
+            @Value("${app.security.login-rate-limit.window:1m}") Duration loginWindow
+    ) {
+        this.loginRateLimitEnabled = loginRateLimitEnabled;
+        this.loginMaxRequests = loginMaxRequests;
+        this.loginWindow = loginWindow;
+    }
 
     @Override
     protected void doFilterInternal(
@@ -82,6 +95,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private RateLimitRule findMatchingRule(HttpServletRequest request) {
         String method = request.getMethod();
         String path = request.getServletPath();
+        if (loginRateLimitEnabled
+                && "POST".equalsIgnoreCase(method)
+                && path.startsWith("/api/auth/login")) {
+            return new RateLimitRule("POST", "/api/auth/login", loginMaxRequests, loginWindow);
+        }
         for (RateLimitRule rule : RULES) {
             if (rule.method().equalsIgnoreCase(method) && path.startsWith(rule.pathPrefix())) {
                 return rule;

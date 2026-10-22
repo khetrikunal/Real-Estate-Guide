@@ -1,5 +1,6 @@
 package com.real_estate.Kunal.DTO;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,6 +12,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ProjectConfigDTO {
     private Long id;
     private String configLabel;   // e.g. "1 BHK", "2 BHK", "Shop"

@@ -45,46 +45,145 @@ public class LocationService {
             .build();
 
     public Location createLocation(LocationRequest request) {
+        String state = request.getState() != null ? request.getState().trim() : "";
+        String city = request.getCity() != null ? request.getCity().trim() : "";
+        String area = request.getArea() != null ? request.getArea().trim() : "";
+        Double rate = request.getEffectivePricing();
+
+        if (state.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "State is required");
+        }
+        if (city.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "City is required");
+        }
+        if (area.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Area is required");
+        }
+        if (rate == null || rate <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Location pricing is required and must be a valid positive number");
+        }
+
+        // Prevent duplicate identical State + City + Area locations
+        if (locationRepository.existsByCityIgnoreCaseAndStateIgnoreCaseAndAreaIgnoreCase(city, state, area)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Location already exists for " + state + " -> " + city + " -> " + area);
+        }
+
+        String locationName = (request.getLocationName() != null && !request.getLocationName().isBlank())
+                ? request.getLocationName().trim()
+                : (state + " - " + city + " - " + area);
 
         Location location = Location.builder()
-                .locationName(request.getLocationName().trim())
-                .city(request.getCity().trim())
-                .state(request.getState().trim())
-                .area(normalizeOptionalText(request.getArea()))
-                .subscriptionRate(request.getSubscriptionRate())
+                .locationName(locationName)
+                .city(city)
+                .state(state)
+                .area(area)
+                .subscriptionRate(rate)
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        return locationRepository.save(location);
+        Location savedLocation = locationRepository.save(location);
+
+        // Keep CustomCity & Area entities in sync for system-wide consistency
+        try {
+            if (!customCityRepository.existsByStateIgnoreCaseAndCityIgnoreCase(state, city)) {
+                customCityRepository.save(CustomCity.builder()
+                        .state(state)
+                        .city(city)
+                        .subscriptionRate(rate)
+                        .active(true)
+                        .addedBy(currentUserId())
+                        .build());
+            }
+            if (!areaRepository.existsByNameIgnoreCaseAndCityIgnoreCaseAndStateIgnoreCase(area, city, state)) {
+                areaRepository.save(Area.builder()
+                        .name(area)
+                        .city(city)
+                        .state(state)
+                        .subscriptionRate(rate)
+                        .active(true)
+                        .build());
+            } else {
+                areaRepository.findByNameIgnoreCaseAndCityIgnoreCaseAndStateIgnoreCase(area, city, state)
+                        .ifPresent(existingArea -> {
+                            if (existingArea.getSubscriptionRate() == null || existingArea.getSubscriptionRate() <= 0) {
+                                existingArea.setSubscriptionRate(rate);
+                                areaRepository.save(existingArea);
+                            }
+                        });
+            }
+        } catch (Exception ignored) {
+            // Non-critical auxiliary sync
+        }
+
+        return savedLocation;
     }
 
     public List<Location> getAllLocations() {
-        return locationRepository.findAll();
+        return locationRepository.findAllByOrderByStateAscCityAscAreaAsc();
     }
 
     public Location getLocationById(Long id) {
         return locationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Location not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Location not found"));
     }
 
     public Location updateLocation(Long id, LocationRequest request) {
-
         Location location = locationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Location not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Location not found"));
 
-        location.setLocationName(request.getLocationName().trim());
-        location.setCity(request.getCity().trim());
-        location.setState(request.getState().trim());
-        location.setArea(normalizeOptionalText(request.getArea()));
-        location.setSubscriptionRate(request.getSubscriptionRate());
+        String state = request.getState() != null ? request.getState().trim() : "";
+        String city = request.getCity() != null ? request.getCity().trim() : "";
+        String area = request.getArea() != null ? request.getArea().trim() : "";
+        Double rate = request.getEffectivePricing();
 
-        return locationRepository.save(location);
+        if (state.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "State is required");
+        }
+        if (city.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "City is required");
+        }
+        if (area.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Area is required");
+        }
+        if (rate == null || rate <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Location pricing is required and must be a valid positive number");
+        }
+
+        // Prevent duplicate identical State + City + Area on another record
+        locationRepository.findByCityIgnoreCaseAndStateIgnoreCaseAndAreaIgnoreCase(city, state, area)
+                .ifPresent(existing -> {
+                    if (!existing.getId().equals(id)) {
+                        throw new ResponseStatusException(HttpStatus.CONFLICT, "Another location already exists for " + state + " -> " + city + " -> " + area);
+                    }
+                });
+
+        String locationName = (request.getLocationName() != null && !request.getLocationName().isBlank())
+                ? request.getLocationName().trim()
+                : (state + " - " + city + " - " + area);
+
+        location.setLocationName(locationName);
+        location.setCity(city);
+        location.setState(state);
+        location.setArea(area);
+        location.setSubscriptionRate(rate);
+
+        Location updated = locationRepository.save(location);
+
+        // Keep Area subscription rate in sync
+        try {
+            areaRepository.findByNameIgnoreCaseAndCityIgnoreCaseAndStateIgnoreCase(area, city, state)
+                    .ifPresent(existingArea -> {
+                        existingArea.setSubscriptionRate(rate);
+                        areaRepository.save(existingArea);
+                    });
+        } catch (Exception ignored) {}
+
+        return updated;
     }
 
     public void deleteLocation(Long id) {
-
         Location location = locationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Location not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Location not found"));
 
         locationRepository.delete(location);
     }

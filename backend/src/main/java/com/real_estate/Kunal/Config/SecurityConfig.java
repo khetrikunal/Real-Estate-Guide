@@ -19,7 +19,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * CORS is intentionally disabled here ({@code .cors(cors -> cors.disable())})
  * because CORS headers are handled upstream by the servlet-level filter defined
  * in {@link CorsConfig}, which runs at {@link org.springframework.core.Ordered#HIGHEST_PRECEDENCE}.
- * That filter is the single source of truth for CORS – do not add a second
+ * That filter is the single source of truth for CORS â€“ do not add a second
  * {@code CorsConfigurationSource} bean here.
  */
 @Configuration
@@ -83,13 +83,14 @@ public class SecurityConfig {
                         .requestMatchers("/api/chat/**").authenticated()
                         .requestMatchers("/api/auth/me").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/users/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "EMPLOYEE")
+                         .requestMatchers(HttpMethod.POST, "/api/users/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "EMPLOYEE")
                         .requestMatchers("/api/superadmin/**").hasRole("SUPER_ADMIN")
                             .requestMatchers("/api/admin/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
                         .requestMatchers("/api/employees", "/api/employees/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/locations").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/locations/**").permitAll()
                         // POST /api/locations/cities is restricted by @PreAuthorize('SUPER_ADMIN')
-                        // on LocationController.addCustomCity — SecurityConfig matcher removed to avoid duplication.
+                        // on LocationController.addCustomCity â€” SecurityConfig matcher removed to avoid duplication.
                         // Other /api/locations mutating operations (PUT/PATCH/DELETE, and generic POST)
                         // have no @PreAuthorize, so they are guarded here.
                         .requestMatchers(HttpMethod.POST, "/api/locations").hasAnyRole("SUPER_ADMIN", "SUB_ADMIN", "EMPLOYEE")
@@ -97,9 +98,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, "/api/locations/**").hasAnyRole("SUPER_ADMIN", "SUB_ADMIN", "EMPLOYEE")
                         .requestMatchers(HttpMethod.DELETE, "/api/locations/**").hasAnyRole("SUPER_ADMIN", "SUB_ADMIN", "EMPLOYEE")
                         // POST /api/areas and DELETE /api/areas/** are restricted by @PreAuthorize('SUPER_ADMIN')
-                        // on AreaController — SecurityConfig matchers removed to avoid duplication.
+                        // on AreaController â€” SecurityConfig matchers removed to avoid duplication.
                         .requestMatchers(HttpMethod.GET, "/api/areas").permitAll()
-                        .requestMatchers("/api/subscription/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "SUB_ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/properties/*/units/*/documents/*/download").permitAll()
+                        .requestMatchers("/api/properties/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "EMPLOYEE")
                         .requestMatchers("/api/projects/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "EMPLOYEE")
                         .requestMatchers("/api/kyc/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/documents/download/**").permitAll()

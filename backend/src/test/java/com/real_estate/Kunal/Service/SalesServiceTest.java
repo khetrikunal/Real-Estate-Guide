@@ -35,7 +35,7 @@ class SalesServiceTest {
         SaleRepository saleRepository = mock(SaleRepository.class);
         UserRepository userRepository = mock(UserRepository.class);
         ProjectRepository projectRepository = mock(ProjectRepository.class);
-        SalesService service = new SalesService(saleRepository, userRepository, projectRepository);
+        SalesService service = new SalesService(saleRepository, userRepository, projectRepository, mock(LocationService.class));
 
         Authentication authentication = mock(Authentication.class);
         when(authentication.isAuthenticated()).thenReturn(true);
@@ -84,7 +84,7 @@ class SalesServiceTest {
 
     @Test
     void recordSaleRejectsBlankBuyerNameOrPhone() {
-        SalesService service = new SalesService(mock(SaleRepository.class), mock(UserRepository.class), mock(ProjectRepository.class));
+        SalesService service = new SalesService(mock(SaleRepository.class), mock(UserRepository.class), mock(ProjectRepository.class), mock(LocationService.class));
 
         SaleRecordRequest blankName = new SaleRecordRequest();
         blankName.setProjectId(10L);

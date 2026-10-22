@@ -1,8 +1,7 @@
 package com.real_estate.Kunal.DTO;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
@@ -10,14 +9,22 @@ import java.util.List;
 
 import lombok.Data;
 
-
-
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ProjectRequest {
 
-    @NotBlank(message = "Project name is required")
     @Size(max = 150, message = "Project name is too long")
     private String projectName;
+
+    // Land & Plot specific
+    private String plotNumber;
+    private String surveyNumber;
+    private String plotDimensions;
+    private String ownershipType;
+
+    // Building & Tower specific
+    private Boolean hasMultipleTowers;
+    private Integer towerCount;
 
     private Long locationId;
 
@@ -27,12 +34,10 @@ public class ProjectRequest {
 
     private String address;
 
-    @NotBlank(message = "City is required")
     private String city;
 
     private String area;
 
-    @NotBlank(message = "State is required")
     private String state;
 
     private String zipCode;
@@ -62,10 +67,27 @@ public class ProjectRequest {
     private Double builtUpArea;
     private Double superBuiltUpArea;
 
-    // Keep backward compatibility: tests create projects without builderName.
     private String builderName;
 
     private String builderNumber;
+
+    private String builderEmail;
+
+    private String propertyType;
+
+    private String apartmentName;
+
+    private Double totalLandArea;
+
+    private String totalLandAreaUnit;
+
+    private Double totalBuiltUpArea;
+
+    private String propertyCode;
+
+    private Integer totalUnits;
+
+    private Integer completionPercentage;
 
     // Multi-config: list of sub-configs (e.g. multiple BHK types + shops)
     @Valid

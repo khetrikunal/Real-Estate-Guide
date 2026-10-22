@@ -71,9 +71,49 @@ public class ProjectController {
         return projectService.recordSale(id, request);
     }
 
+    @GetMapping("/trash")
+    public List<ProjectResponse> getTrashProjects() {
+        return projectService.getTrashProjects();
+    }
+
+    @PutMapping("/{id}/trash")
+    public ProjectResponse moveToTrashPut(@PathVariable("id") Long id) {
+        return projectService.moveToTrash(id);
+    }
+
+    @PostMapping("/{id}/trash")
+    public ProjectResponse moveToTrashPost(@PathVariable("id") Long id) {
+        return projectService.moveToTrash(id);
+    }
+
+    @PutMapping("/{id}/restore")
+    public ProjectResponse restoreProjectPut(@PathVariable("id") Long id) {
+        return projectService.restoreProject(id);
+    }
+
+    @PostMapping("/{id}/restore")
+    public ProjectResponse restoreProjectPost(@PathVariable("id") Long id) {
+        return projectService.restoreProject(id);
+    }
+
+    @DeleteMapping("/{id}/permanent")
+    public ResponseEntity<?> deleteProjectPermanently(@PathVariable("id") Long id) {
+        projectService.deleteProjectPermanently(id);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Project permanently deleted successfully"));
+    }
+
     @DeleteMapping("/{id}")
-    public void deleteProject(@PathVariable("id") Long id){
-        projectService.deleteProject(id);
+    public ResponseEntity<?> deleteProject(
+            @PathVariable("id") Long id,
+            @RequestParam(name = "permanent", defaultValue = "false") boolean permanent
+    ) {
+        if (permanent) {
+            projectService.deleteProjectPermanently(id);
+            return ResponseEntity.ok(Map.of("success", true, "message", "Project permanently deleted successfully"));
+        } else {
+            ProjectResponse res = projectService.moveToTrash(id);
+            return ResponseEntity.ok(Map.of("success", true, "message", "Project moved to Trash successfully", "project", res));
+        }
     }
 
     @GetMapping("/search")

@@ -278,22 +278,22 @@ function LoginPanel() {
   }
 
   return (
-    <div className="rg-login-card rounded-3xl bg-white dark:bg-[#0c152d]/90 dark:border dark:border-white/10 p-6 sm:p-8 shadow-[0_32px_80px_rgba(0,0,0,0.35)]">
+    <div className="rg-login-card rounded-3xl bg-white p-6 sm:p-8 shadow-[0_32px_80px_rgba(0,0,0,0.35)] border border-white/20">
       {/* Logo */}
       <div className="mb-6 flex flex-col items-center gap-2">
-        <div className="rg-login-logo-ring flex h-14 w-14 items-center justify-center rounded-2xl overflow-hidden">
+        <div className="rg-login-logo-ring flex h-14 w-14 items-center justify-center rounded-2xl overflow-hidden shadow-sm">
           <img src={realestateLogo} alt="RealEstate Guide Logo" className="h-full w-full object-cover" />
         </div>
         <div className="text-center">
-          <h2 className="text-2xl font-bold tracking-tight text-[#0d1b3e] dark:text-white">Welcome Back</h2>
-          <p className="mt-0.5 text-[12px] text-gray-400 dark:text-gray-300">Login to access your Real Estate Guide</p>
+          <h2 className="text-2xl font-bold tracking-tight text-[#0d1b3e]">Welcome Back</h2>
+          <p className="mt-1 text-xs text-[#64748b]">Login to access your Real Estate Guide</p>
         </div>
       </div>
 
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         {/* Email */}
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="lp-email" className="rg-label text-[11px] font-semibold tracking-wide text-gray-600 uppercase">
+          <Label htmlFor="lp-email" className="rg-label text-xs font-bold tracking-wider text-[#0d1b3e] uppercase">
             Email Address
           </Label>
           <div className="relative">
@@ -303,20 +303,23 @@ function LoginPanel() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
-              className="rg-input h-11 pr-10 text-sm"
+              className="rg-input h-11 w-full rounded-xl border border-[#cbd5e1] bg-white pl-4 pr-11 text-sm text-[#0d1b3e] placeholder:text-[#94a3b8] focus-visible:border-[#c9a84c] focus-visible:ring-2 focus-visible:ring-[#c9a84c]/20"
               autoComplete="email"
+              required
             />
-            <Mail className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[#64748b]">
+              <Mail className="h-4 w-4" />
+            </div>
           </div>
         </div>
 
         {/* Password */}
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
-            <Label htmlFor="lp-password" className="rg-label text-[11px] font-semibold tracking-wide text-gray-600 uppercase">
+            <Label htmlFor="lp-password" className="rg-label text-xs font-bold tracking-wider text-[#0d1b3e] uppercase">
               Password
             </Label>
-            <Link href="#" className="text-[11px] font-medium text-[#c9a84c] hover:opacity-80">
+            <Link href="/forgot-password" className="text-xs font-semibold text-[#c9a84c] hover:text-[#b89030] transition-colors">
               Forgot Password?
             </Link>
           </div>
@@ -327,14 +330,15 @@ function LoginPanel() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
-              className="rg-input h-11 pr-10 text-sm"
+              className="rg-input h-11 w-full rounded-xl border border-[#cbd5e1] bg-white pl-4 pr-11 text-sm text-[#0d1b3e] placeholder:text-[#94a3b8] focus-visible:border-[#c9a84c] focus-visible:ring-2 focus-visible:ring-[#c9a84c]/20"
               autoComplete="current-password"
+              required
             />
             <button
               type="button"
               onClick={() => setShowPassword((s) => !s)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              tabIndex={-1}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-lg text-[#64748b] hover:text-[#0d1b3e] hover:bg-black/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a84c] cursor-pointer"
             >
               {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
             </button>
@@ -348,23 +352,25 @@ function LoginPanel() {
             type="checkbox"
             checked={remember}
             onChange={(e) => setRemember(e.target.checked)}
-            className="h-3.5 w-3.5 rounded border-gray-300 accent-[#c9a84c]"
+            className="h-4 w-4 rounded border-gray-300 text-[#0d1b3e] accent-[#c9a84c] focus:ring-[#c9a84c] cursor-pointer"
           />
-          <label htmlFor="lp-remember" className="text-[12px] text-gray-500 dark:text-gray-300 cursor-pointer">
+          <label htmlFor="lp-remember" className="text-xs font-medium text-[#475569] cursor-pointer">
             Remember me
           </label>
         </div>
 
         {/* Error */}
         {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-[12px] text-red-600">{error}</p>
+          <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs text-red-700" role="alert">
+            {error}
+          </div>
         )}
 
         {/* Submit */}
         <button
           type="submit"
           disabled={busy}
-          className="rg-btn-login mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold transition-all duration-150 disabled:opacity-60"
+          className="rg-btn-login mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold transition-all duration-150 disabled:opacity-60 cursor-pointer"
         >
           {busy ? (
             <>
@@ -376,49 +382,63 @@ function LoginPanel() {
           )}
         </button>
 
-        <p className="text-center text-[12px] text-gray-500 dark:text-gray-400">
+        <p className="text-center text-xs text-[#64748b]">
           Don&apos;t have an account?{" "}
-          <Link href="/signup/subadmin" className="font-semibold text-[#c9a84c] hover:opacity-80">
+          <Link href="/signup/subadmin" className="font-bold text-[#c9a84c] hover:text-[#b89030] transition-colors">
             Create Account
           </Link>
         </p>
       </form>
 
       <style>{`
-        .rg-login-card { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
-        .rg-login-logo-ring {
-          background: linear-gradient(135deg, rgba(13,27,62,0.08), rgba(201,168,76,0.15));
-          border: 1.5px solid rgba(201,168,76,0.3);
-        }
-        .rg-label {
-          color: rgb(71 85 105) !important;
-        }
-        .dark .rg-label {
-          color: rgba(255, 255, 255, 0.7) !important;
-        }
-        .rg-input {
-          background-color: rgb(248 250 252) !important;
-          border-color: rgb(226 232 240) !important;
+        .rg-login-card {
+          font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+          background: #ffffff !important;
           color: #0d1b3e !important;
         }
+        .rg-login-logo-ring {
+          background: linear-gradient(135deg, rgba(13,27,62,0.06), rgba(201,168,76,0.15));
+          border: 1.5px solid rgba(201,168,76,0.35);
+        }
+        .rg-label {
+          color: #0d1b3e !important;
+        }
+        .rg-input {
+          background-color: #ffffff !important;
+          border-color: #cbd5e1 !important;
+          color: #0d1b3e !important;
+          -webkit-text-fill-color: #0d1b3e !important;
+        }
         .rg-input::placeholder {
-          color: rgb(148 163 184) !important;
+          color: #94a3b8 !important;
+          -webkit-text-fill-color: #94a3b8 !important;
+          opacity: 1 !important;
         }
-        .dark .rg-input {
-          background-color: rgba(255, 255, 255, 0.05) !important;
-          border-color: rgba(255, 255, 255, 0.1) !important;
-          color: #ffffff !important;
+        .rg-input:focus {
+          border-color: #c9a84c !important;
+          box-shadow: 0 0 0 3px rgba(201,168,76,0.18) !important;
         }
-        .dark .rg-input::placeholder {
-          color: rgba(255, 255, 255, 0.3) !important;
+        .rg-input:-webkit-autofill,
+        .rg-input:-webkit-autofill:hover,
+        .rg-input:-webkit-autofill:focus,
+        .rg-input:-webkit-autofill:active {
+          -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+          -webkit-text-fill-color: #0d1b3e !important;
+          caret-color: #0d1b3e !important;
+          transition: background-color 5000s ease-in-out 0s;
         }
-        .rg-input:focus { border-color: #c9a84c !important; box-shadow: 0 0 0 3px rgba(201,168,76,0.12) !important; }
         .rg-btn-login {
-          background: linear-gradient(135deg, #0d1b3e 0%, #1a3066 100%);
-          color: white;
-          box-shadow: 0 8px 24px rgba(13,27,62,0.3);
+          background: linear-gradient(135deg, #0d1b3e 0%, #172d61 100%) !important;
+          color: #ffffff !important;
+          border: 1px solid rgba(201, 168, 76, 0.4) !important;
+          box-shadow: 0 6px 20px rgba(13, 27, 62, 0.25), 0 0 10px rgba(201, 168, 76, 0.12) !important;
         }
-        .rg-btn-login:hover:not(:disabled) { background: linear-gradient(135deg, #142050 0%, #1e3a75 100%); box-shadow: 0 10px 28px rgba(13,27,62,0.4); transform: translateY(-1px); }
+        .rg-btn-login:hover:not(:disabled) {
+          background: linear-gradient(135deg, #12234e 0%, #1f3b7d 100%) !important;
+          border-color: #c9a84c !important;
+          box-shadow: 0 8px 24px rgba(13, 27, 62, 0.35), 0 0 16px rgba(201, 168, 76, 0.25) !important;
+          transform: translateY(-1px);
+        }
       `}</style>
     </div>
   );

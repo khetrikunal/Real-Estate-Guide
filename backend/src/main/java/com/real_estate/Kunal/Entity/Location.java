@@ -31,4 +31,12 @@ public class Location {
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    public Double getPricing() {
+        return subscriptionRate;
+    }
+
+    public void setPricing(Double pricing) {
+        this.subscriptionRate = pricing;
+    }
+
 }

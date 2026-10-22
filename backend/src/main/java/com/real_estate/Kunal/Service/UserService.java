@@ -351,7 +351,7 @@ public class UserService {
                         .build())
                 .toList();
 
-        int projectsCount = projectRepository.findByUploadedBy(id).size();
+        int projectsCount = projectRepository.findByUploadedByAndIsDeletedFalse(id).size();
 
         return SubAdminDetailResponse.builder()
                 .profile(toUserManagementResponse(subAdmin))
@@ -405,7 +405,7 @@ public class UserService {
                         .build())
                 .toList();
 
-        int projectsCount = projectRepository.findByUploadedBy(id).size();
+        int projectsCount = projectRepository.findByUploadedByAndIsDeletedFalse(id).size();
 
         return SubAdminDetailResponse.builder()
                 .profile(toUserManagementResponse(user))

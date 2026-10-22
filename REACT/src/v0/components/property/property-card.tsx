@@ -1,6 +1,6 @@
 import type { CSSProperties, MouseEvent, ReactNode } from "react"
 import { useState } from "react"
-import { Building2, ExternalLink, MapPin } from "lucide-react"
+import { Building2, ExternalLink, MapPin, Trash2 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -13,9 +13,10 @@ interface PropertyCardProps {
   variant?: "row" | "grid"
   action?: ReactNode
   className?: string
+  onDelete?: (property: Property) => void
 }
 
-export function PropertyCard({ property, href, variant = "row", action, className }: PropertyCardProps) {
+export function PropertyCard({ property, href, variant = "row", action, className, onDelete }: PropertyCardProps) {
   const navigateWithTransition = useViewTransitionNavigate()
   const [coverFailed, setCoverFailed] = useState(false)
   const sold = Number(property.unitsSold ?? 0)
@@ -26,10 +27,13 @@ export function PropertyCard({ property, href, variant = "row", action, classNam
   const hasCover = Boolean(property.cover) && !property.noImage && !coverFailed
   const targetHref = href ?? `/${property.id}/configurations`
   const locationUrl = property.googleMapsUrl?.trim()
+  const locationText = property.city && property.area
+    ? `${property.city} → ${property.area}`
+    : property.city || property.area || ""
   const basicInfo = [
     property.config || "Configuration pending",
     titleCase(property.status),
-    property.address ? `${property.address}, ${property.city}` : property.city,
+    property.address ? `${property.address}, ${locationText}` : locationText,
   ].filter((value): value is string => Boolean(value))
 
   const handleNavigate = () => {
@@ -41,6 +45,12 @@ export function PropertyCard({ property, href, variant = "row", action, classNam
     event.preventDefault()
     event.stopPropagation()
     if (locationUrl) window.open(locationUrl, "_blank", "noopener,noreferrer")
+  }
+
+  const handleDeleteClick = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    if (onDelete) onDelete(property)
   }
 
   const cover = (
@@ -85,19 +95,33 @@ export function PropertyCard({ property, href, variant = "row", action, classNam
             {property.id && <div className="truncate text-[10px] uppercase tracking-wide">ID: {property.id}</div>}
           </div>
         </div>
-        <button
-          type="button"
-          className={cn(
-            "border-border bg-background/70 text-muted-foreground hover:text-primary hover:border-ring/50 shrink-0 rounded-full border p-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
-            !locationUrl && "cursor-not-allowed opacity-40",
-          )}
-          disabled={!locationUrl}
-          aria-label={locationUrl ? "Open Google Maps location" : "No Google Maps location saved"}
-          onClick={handleLocationClick}
-        >
-          <MapPin className="h-4 w-4" />
-          {locationUrl ? <ExternalLink className="text-primary/70 -ml-0.5 -mt-0.5 h-2.5 w-2.5" /> : null}
-        </button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            className={cn(
+              "border-border bg-background/70 text-muted-foreground hover:text-primary hover:border-ring/50 shrink-0 rounded-full border p-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
+              !locationUrl && "cursor-not-allowed opacity-40",
+            )}
+            disabled={!locationUrl}
+            aria-label={locationUrl ? "Open Google Maps location" : "No Google Maps location saved"}
+            onClick={handleLocationClick}
+          >
+            <MapPin className="h-4 w-4" />
+            {locationUrl ? <ExternalLink className="text-primary/70 -ml-0.5 -mt-0.5 h-2.5 w-2.5" /> : null}
+          </button>
+          {onDelete && !action ? (
+            <button
+              type="button"
+              data-no-navigate="true"
+              className="border-border bg-background/70 text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/40 shrink-0 rounded-full border p-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40"
+              title="Delete Project"
+              aria-label={`Delete ${property.name}`}
+              onClick={handleDeleteClick}
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          ) : null}
+        </div>
       </div>
       <div className="mt-4 flex items-center gap-3 text-[11px]">
         <span className="text-muted-foreground rounded-full bg-white/[0.055] px-2.5 py-1 font-medium">
@@ -138,13 +162,19 @@ export function PropertyCard({ property, href, variant = "row", action, classNam
     className,
   )
 
-  if (href && !action) {
+  if (href) {
     return (
       <div
         role="button"
         tabIndex={0}
         className={cardClassName}
-        onClick={handleNavigate}
+        onClick={(event) => {
+          const target = event.target as HTMLElement | null
+          if (target?.closest("button") || target?.closest("a") || target?.closest("[data-no-navigate]")) {
+            return
+          }
+          handleNavigate()
+        }}
         onKeyDown={(event) => {
           if (event.target !== event.currentTarget) return
           if (event.key === "Enter" || event.key === " ") {

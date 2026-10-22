@@ -35,10 +35,13 @@ public class DocumentController {
     public List<ProjectDocumentResponse> uploadDocuments(
             @PathVariable("projectId") Long projectId,
             @RequestParam("files") MultipartFile[] files,
-            @RequestParam(value = "uploadedBy", required = false) Long uploadedBy
+            @RequestParam(value = "uploadedBy", required = false) Long uploadedBy,
+            @RequestParam(value = "documentLevel", required = false) String documentLevel,
+            @RequestParam(value = "documentCategory", required = false) String documentCategory,
+            @RequestParam(value = "buildingId", required = false) Long buildingId
     ) throws IOException {
 
-        documentService.uploadDocuments(projectId, files, uploadedBy);
+        documentService.uploadDocuments(projectId, files, uploadedBy, documentLevel, documentCategory, buildingId);
         return projectService.getProjectDocumentResponses(projectId);
     }
 

@@ -1,7 +1,10 @@
 package com.real_estate.Kunal.Service;
 
+import com.real_estate.Kunal.DTO.ProjectConfigDTO;
+import com.real_estate.Kunal.DTO.ProjectRequest;
 import com.real_estate.Kunal.DTO.ProjectResponse;
 import com.real_estate.Kunal.DTO.SellProjectRequest;
+import com.real_estate.Kunal.Entity.Location;
 import com.real_estate.Kunal.Entity.Project;
 import com.real_estate.Kunal.Entity.ProjectConfig;
 import com.real_estate.Kunal.Entity.ProjectUnit;
@@ -28,6 +31,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
@@ -36,6 +40,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -185,6 +190,167 @@ class ProjectServiceTest {
                 .isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
+    @Test
+    void createLandListingSuccessfullyPersistsLandSpecificsConfigsAndUnits() {
+        ProjectRepository projectRepository = mock(ProjectRepository.class);
+        ProjectConfigRepository projectConfigRepository = mock(ProjectConfigRepository.class);
+        ProjectDocumentRepository projectDocumentRepository = mock(ProjectDocumentRepository.class);
+        ProjectUnitRepository projectUnitRepository = mock(ProjectUnitRepository.class);
+        SaleRepository saleRepository = mock(SaleRepository.class);
+        UserRepository userRepository = mock(UserRepository.class);
+        ActivityRepository activityRepository = mock(ActivityRepository.class);
+        LocationRepository locationRepository = mock(LocationRepository.class);
+
+        ProjectService service = newService(
+                projectRepository,
+                projectConfigRepository,
+                projectDocumentRepository,
+                projectUnitRepository,
+                saleRepository,
+                userRepository,
+                activityRepository,
+                locationRepository);
+
+        User superadmin = User.builder()
+                .id(1L)
+                .name("Super Admin")
+                .email("admin@example.com")
+                .role(Role.SUPER_ADMIN)
+                .build();
+        setAuthenticatedUser(superadmin, userRepository);
+
+        Location loc = Location.builder()
+                .id(5L)
+                .city("Pune")
+                .area("Wakad")
+                .state("Maharashtra")
+                .build();
+        when(locationRepository.findById(5L)).thenReturn(Optional.of(loc));
+
+        when(projectRepository.save(any(Project.class))).thenAnswer(inv -> {
+            Project p = inv.getArgument(0);
+            if (p.getId() == null) {
+                p.setId(50L);
+            }
+            return p;
+        });
+        when(projectRepository.saveAndFlush(any(Project.class))).thenAnswer(inv -> {
+            Project p = inv.getArgument(0);
+            if (p.getId() == null) {
+                p.setId(50L);
+            }
+            return p;
+        });
+
+        AtomicReference<ProjectConfig> savedConfigRef = new AtomicReference<>();
+        when(projectConfigRepository.saveAndFlush(any(ProjectConfig.class))).thenAnswer(inv -> {
+            ProjectConfig c = inv.getArgument(0);
+            c.setId(101L);
+            savedConfigRef.set(c);
+            return c;
+        });
+
+        List<ProjectUnit> savedUnits = new ArrayList<>();
+        when(projectUnitRepository.save(any(ProjectUnit.class))).thenAnswer(inv -> {
+            ProjectUnit u = inv.getArgument(0);
+            u.setId(201L);
+            savedUnits.add(u);
+            return u;
+        });
+        when(projectUnitRepository.findByConfigId(101L)).thenAnswer(inv -> savedUnits);
+
+        ProjectConfigDTO plotConfig = ProjectConfigDTO.builder()
+                .configLabel("Plot 1")
+                .propertyType("Plot")
+                .listingType("Sale")
+                .units(1)
+                .unitsSold(0)
+                .price(3500000.0)
+                .floorNo("0")
+                .flatType("Plot")
+                .carpetAreaSqft(2400.0)
+                .unitLabels(List.of("Plot 1"))
+                .build();
+
+        ProjectRequest request = new ProjectRequest();
+        request.setPropertyCategory("Land");
+        request.setPropertySubcategory("Residential Plot");
+        request.setLocationId(5L);
+        request.setPlotNumber("Plot 101");
+        request.setSurveyNumber("SN-45");
+        request.setPlotDimensions("60 x 40 ft");
+        request.setOwnershipType("Freehold");
+        request.setTotalLandArea(2400.0);
+        request.setTotalLandAreaUnit("sq_ft");
+        request.setAddress("Near High Street");
+        request.setPrice(3500000.0);
+        request.setConfigs(List.of(plotConfig));
+
+        ProjectResponse response = service.createProject(request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getPropertyCategory()).isEqualTo("Land");
+        assertThat(response.getPropertySubcategory()).isEqualTo("Residential Plot");
+        assertThat(response.getPlotNumber()).isEqualTo("Plot 101");
+        assertThat(response.getSurveyNumber()).isEqualTo("SN-45");
+        assertThat(response.getPlotDimensions()).isEqualTo("60 x 40 ft");
+        assertThat(response.getOwnershipType()).isEqualTo("Freehold");
+        assertThat(response.getTotalLandArea()).isEqualTo(2400.0);
+        assertThat(response.getTotalLandAreaUnit()).isEqualTo("sq_ft");
+        assertThat(response.getCity()).isEqualTo("Pune");
+        assertThat(response.getArea()).isEqualTo("Wakad");
+
+        verify(projectUnitRepository, atLeastOnce()).save(any(ProjectUnit.class));
+        assertThat(savedUnits).hasSize(1);
+        assertThat(savedUnits.get(0).getConfigId()).isEqualTo(101L);
+        assertThat(savedUnits.get(0).getUnitLabel()).isEqualTo("Plot 1");
+    }
+
+    @Test
+    void createLandListingDerivesFallbackNameWhenBlank() {
+        ProjectRepository projectRepository = mock(ProjectRepository.class);
+        LocationRepository locationRepository = mock(LocationRepository.class);
+        UserRepository userRepository = mock(UserRepository.class);
+
+        ProjectService service = newService(
+                projectRepository,
+                mock(ProjectConfigRepository.class),
+                mock(ProjectDocumentRepository.class),
+                mock(ProjectUnitRepository.class),
+                mock(SaleRepository.class),
+                userRepository,
+                mock(ActivityRepository.class),
+                locationRepository);
+
+        User superadmin = User.builder()
+                .id(1L)
+                .name("Super Admin")
+                .email("admin@example.com")
+                .role(Role.SUPER_ADMIN)
+                .build();
+        setAuthenticatedUser(superadmin, userRepository);
+
+        Location loc = Location.builder().id(5L).city("Pune").area("Baner").state("Maharashtra").build();
+        when(locationRepository.findById(5L)).thenReturn(Optional.of(loc));
+
+        ArgumentCaptor<Project> captor = ArgumentCaptor.forClass(Project.class);
+        when(projectRepository.save(captor.capture())).thenAnswer(inv -> {
+            Project p = inv.getArgument(0);
+            p.setId(60L);
+            return p;
+        });
+
+        ProjectRequest request = new ProjectRequest();
+        request.setPropertyCategory("Land");
+        request.setLocationId(5L);
+        request.setPlotNumber("99");
+        request.setAddress("Baner Road");
+
+        ProjectResponse response = service.createProject(request);
+
+        assertThat(response.getProjectName()).isEqualTo("Plot 99");
+    }
+
     private ProjectService newService(
             ProjectRepository projectRepository,
             ProjectConfigRepository projectConfigRepository,
@@ -193,6 +359,26 @@ class ProjectServiceTest {
             SaleRepository saleRepository,
             UserRepository userRepository,
             ActivityRepository activityRepository) {
+        return newService(
+                projectRepository,
+                projectConfigRepository,
+                projectDocumentRepository,
+                projectUnitRepository,
+                saleRepository,
+                userRepository,
+                activityRepository,
+                mock(LocationRepository.class));
+    }
+
+    private ProjectService newService(
+            ProjectRepository projectRepository,
+            ProjectConfigRepository projectConfigRepository,
+            ProjectDocumentRepository projectDocumentRepository,
+            ProjectUnitRepository projectUnitRepository,
+            SaleRepository saleRepository,
+            UserRepository userRepository,
+            ActivityRepository activityRepository,
+            LocationRepository locationRepository) {
         return new ProjectService(
                 projectRepository,
                 projectConfigRepository,
@@ -201,12 +387,13 @@ class ProjectServiceTest {
                 saleRepository,
                 mock(SubscriptionRepository.class),
                 mock(BrokerLocationRepository.class),
-                mock(LocationRepository.class),
+                locationRepository != null ? locationRepository : mock(LocationRepository.class),
                 mock(AreaRepository.class),
                 userRepository,
                 activityRepository,
                 mock(SignedMediaUrlService.class),
-                mock(ObjectStorageService.class));
+                mock(ObjectStorageService.class),
+                mock(LocationService.class));
     }
 
     private void setAuthenticatedUser(User user, UserRepository userRepository) {

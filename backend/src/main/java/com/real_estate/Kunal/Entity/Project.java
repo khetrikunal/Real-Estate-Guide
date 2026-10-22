@@ -28,7 +28,12 @@ public class Project {
 
     private String projectName;
 
+    @Column(name = "location_id")
     private Long locationId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "location_id", insertable = false, updatable = false)
+    private Location location;
 
     @Column(columnDefinition = "TEXT")
     private String description;
@@ -91,6 +96,48 @@ public class Project {
     @Column(name = "builder_number")
     private String builderNumber;
 
+    @Column(name = "builder_email")
+    private String builderEmail;
+
+    @Column(name = "property_type")
+    private String propertyType;
+
+    @Column(name = "apartment_name")
+    private String apartmentName;
+
+    @Column(name = "total_land_area")
+    private Double totalLandArea;
+
+    @Column(name = "total_land_area_unit")
+    @Builder.Default
+    private String totalLandAreaUnit = "sq_ft";
+
+    @Column(name = "total_built_up_area")
+    private Double totalBuiltUpArea;
+
+    @Column(name = "property_code")
+    private String propertyCode;
+
+    @Column(name = "plot_number")
+    private String plotNumber;
+
+    @Column(name = "survey_number")
+    private String surveyNumber;
+
+    @Column(name = "plot_dimensions")
+    private String plotDimensions;
+
+    @Column(name = "ownership_type")
+    private String ownershipType;
+
+    @Column(name = "has_multiple_towers")
+    @Builder.Default
+    private Boolean hasMultipleTowers = false;
+
+    @Column(name = "tower_count")
+    @Builder.Default
+    private Integer towerCount = 1;
+
     private LocalDateTime completedAt;
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
@@ -146,4 +193,11 @@ public class Project {
     private LocalDateTime updatedAt;
 
     private Long modifiedBy;
+
+    @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
+    private Boolean isDeleted = false;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 }

@@ -308,6 +308,15 @@ const mapProperty = (record: ApiRecord): Property => {
     longitude: firstNumber(record, ["longitude", "lng", "lon"]),
     googleMapsUrl: firstString(record, ["googleMapsUrl", "mapUrl", "mapsUrl"], ""),
     noImage: !cover,
+    isDeleted: Boolean(record.isDeleted ?? record.deleted),
+    deletedAt: firstString(record, ["deletedAt", "deleted_at"], ""),
+    propertyCategory: firstString(record, ["propertyCategory"], "Residential"),
+    propertySubcategory: firstString(record, ["propertySubcategory"], ""),
+    plotNumber: firstString(record, ["plotNumber"], ""),
+    surveyNumber: firstString(record, ["surveyNumber"], ""),
+    plotDimensions: firstString(record, ["plotDimensions"], ""),
+    hasMultipleTowers: Boolean(record.hasMultipleTowers),
+    towerCount: firstNumber(record, ["towerCount"], 0),
     raw: record,
   } as any
 
@@ -403,14 +412,22 @@ const mapUser = (record: ApiRecord): AdminUser => {
   }
 }
 
-const mapLocation = (record: ApiRecord): Location => ({
-  id: firstString(record, ["id", "locationId", "_id"], "") || fallbackId("location"),
-  name: firstString(record, ["locationName", "name", "area"], "Unnamed location"),
-  city: firstString(record, ["city"], "-"),
-  state: firstString(record, ["state"], "-"),
-  area: firstString(record, ["area"], "City-wide"),
-  rate: formatInr(firstNumber(record, ["subscriptionRate", "rate", "monthlyRate", "price"])),
-})
+const mapLocation = (record: ApiRecord): Location => {
+  const numericRate = firstNumber(record, ["subscriptionRate", "rate", "monthlyRate", "price", "pricing"])
+  return {
+    id: firstString(record, ["id", "locationId", "_id"], "") || fallbackId("location"),
+    name: firstString(record, ["locationName", "name", "area"], "Unnamed location"),
+    city: firstString(record, ["city"], "-"),
+    state: firstString(record, ["state"], "-"),
+    area: firstString(record, ["area"], "-"),
+    rate: formatInr(numericRate),
+    rawRate: numericRate,
+    rawPrice: numericRate,
+    subscriptionRate: numericRate,
+    pricing: numericRate,
+    raw: record,
+  } as any
+}
 
 const mapArea = (record: ApiRecord) => ({
   id: firstString(record, ["id", "areaId", "_id"], "") || fallbackId("area"),
@@ -421,7 +438,7 @@ const mapArea = (record: ApiRecord) => ({
 
 export function useProjectsData() {
   const { ready, token, user, role } = useAuth()
-  const { data = [], isFetching, error } = useQuery({
+  const { data = [], isFetching, error, refetch } = useQuery({
     queryKey: ["v0", "projects", role, firstString(user ?? {}, ["assignedCity", "city"], ""), firstString(user ?? {}, ["assignedArea", "area"], "")],
     queryFn: async () => asArray(await projectsForUserRequest(user, role)).map(mapProperty),
     initialData: [],
@@ -429,7 +446,20 @@ export function useProjectsData() {
     enabled: ready && Boolean(token),
   })
   const scopedProjects = useMemo(() => scopeProjectsForUser(data, user, role), [data, user, role])
-  return { projects: scopedProjects, isFetching, error }
+  return { projects: scopedProjects, isFetching, error, refetch }
+}
+
+export function useTrashProjectsData() {
+  const { ready, token, user, role } = useAuth()
+  const { data = [], isFetching, error, refetch } = useQuery({
+    queryKey: ["v0", "projects", "trash", role, firstString(user ?? {}, ["assignedCity", "city"], ""), firstString(user ?? {}, ["assignedArea", "area"], "")],
+    queryFn: async () => asArray(await estateApi.projects.trashList()).map(mapProperty),
+    initialData: [],
+    staleTime: 0,
+    enabled: ready && Boolean(token),
+  })
+  const scopedTrash = useMemo(() => scopeProjectsForUser(data, user, role), [data, user, role])
+  return { trashedProjects: scopedTrash, isFetching, error, refetch }
 }
 
 export function useLeadsData() {

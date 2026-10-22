@@ -49,19 +49,23 @@ class LeadServiceTest {
     @Mock
     private AreaRepository areaRepository;
 
+    @Mock
+    private LocationService locationService;
+
     @AfterEach
     void clearSecurityContext() {
         SecurityContextHolder.clearContext();
     }
 
-    /** Helper: build the service with all 5 required dependencies. */
+    /** Helper: build the service with all required dependencies. */
     private LeadService buildService() {
         return new LeadService(
                 leadRepository,
                 userRepository,
                 projectRepository,
                 projectConfigRepository,
-                areaRepository
+                areaRepository,
+                locationService
         );
     }
 
@@ -154,6 +158,7 @@ class LeadServiceTest {
 
         authenticateAs("subadmin@example.com");
         when(userRepository.findByEmail("subadmin@example.com")).thenReturn(Optional.of(locationSubAdmin));
+        when(locationService.resolveUserCityName(locationSubAdmin)).thenReturn("Mumbai");
 
         assertThatThrownBy(() -> service.createLead(request))
                 .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
@@ -181,6 +186,7 @@ class LeadServiceTest {
 
         authenticateAs("subadmin@example.com");
         when(userRepository.findByEmail("subadmin@example.com")).thenReturn(Optional.of(locationSubAdmin));
+        when(locationService.resolveUserCityName(locationSubAdmin)).thenReturn("Pune");
         when(leadRepository.findByAssignedUserIdIn(List.of(99L))).thenReturn(List.of(puneLead, mumbaiLead));
 
         List<Lead> visibleLeads = service.getAllLeads();

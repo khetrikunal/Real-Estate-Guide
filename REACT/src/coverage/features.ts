@@ -44,14 +44,17 @@ const endpoints: Record<string, FeatureEndpoint[]> = {
     { method: 'GET', path: '/locations', label: 'Locations' },
     { method: 'GET', path: '/locations/{id}', label: 'Location detail' },
     { method: 'GET', path: '/locations/cities', label: 'Cities' },
-    { method: 'POST', path: '/locations/cities', label: 'Create city' },
+    // POST /api/locations/cities: SUPER_ADMIN only (@PreAuthorize on LocationController.addCustomCity)
+    { method: 'POST', path: '/locations/cities', label: 'Create city [SUPER_ADMIN]' },
     { method: 'GET', path: '/locations/rate', label: 'Location rate' },
     { method: 'POST', path: '/locations', label: 'Create location' },
     { method: 'PUT', path: '/locations/{id}', label: 'Update location' },
     { method: 'DELETE', path: '/locations/{id}', label: 'Delete location' },
     { method: 'GET', path: '/areas', label: 'Areas' },
-    { method: 'POST', path: '/areas', label: 'Create area' },
-    { method: 'DELETE', path: '/areas/{id}', label: 'Delete area' },
+    // POST /api/areas: SUPER_ADMIN only (@PreAuthorize on AreaController.addArea)
+    { method: 'POST', path: '/areas', label: 'Create area [SUPER_ADMIN]' },
+    // DELETE /api/areas/{id}: SUPER_ADMIN only (@PreAuthorize on AreaController.deleteArea)
+    { method: 'DELETE', path: '/areas/{id}', label: 'Delete area [SUPER_ADMIN]' },
   ],
   crm: [
     { method: 'GET', path: '/leads/all', label: 'Lead list' },
@@ -199,7 +202,7 @@ export const roleFeatureSlugs: Record<Role, readonly string[]> = {
   ],
   admin: ['followup', 'search-property', 'add-property', 'sales', 'admins', 'crm', 'analytics', 'map', 'chat'],
   subadmin: ['followup', 'search-property', 'add-property', 'sales', 'add-location', 'crm', 'analytics', 'map', 'chat', 'subscription'],
-  employee: ['followup', 'search-property', 'add-property', 'sales', 'add-location', 'crm', 'analytics', 'map', 'chat'],
+  employee: ['followup', 'search-property', 'add-property', 'sales', 'crm', 'analytics', 'map', 'chat'],
 };
 
 export function normalizeRole(role: Role, rawRole?: string): Role {

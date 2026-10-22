@@ -9,6 +9,7 @@ import {
   BarChart3,
   Map,
   MessagesSquare,
+  Trash2,
   type LucideIcon,
 } from "lucide-react"
 import type { RoleKey } from "./roles"
@@ -41,6 +42,12 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Add Property",
         icon: Building2,
         href: (r) => `/${r}/properties`,
+      },
+      {
+        key: "trash",
+        label: "Trash",
+        icon: Trash2,
+        href: (r) => `/${r}/properties?tab=trash`,
       },
       {
         key: "search",
@@ -100,10 +107,10 @@ export const NAV_SECTIONS: NavSection[] = [
 ]
 
 const roleNavAccess: Record<RoleKey, ReadonlySet<string>> = {
-  superadmin: new Set(["followup", "properties", "search", "sales", "admins", "locations", "crm", "analytics", "map", "chat"]),
-  admin: new Set(["followup", "properties", "search", "sales", "admins", "crm", "analytics", "map", "chat"]),
-  subadmin: new Set(["followup", "properties", "search", "sales", "locations", "crm", "analytics", "map", "chat"]),
-  employee: new Set(["followup", "properties", "search", "sales", "locations", "crm", "analytics", "map", "chat"]),
+  superadmin: new Set(["followup", "properties", "trash", "search", "sales", "admins", "locations", "crm", "analytics", "map", "chat"]),
+  admin: new Set(["followup", "properties", "trash", "search", "sales", "admins", "crm", "analytics", "map", "chat"]),
+  subadmin: new Set(["followup", "properties", "trash", "search", "sales", "locations", "crm", "analytics", "map", "chat"]),
+  employee: new Set(["followup", "properties", "trash", "search", "sales", "crm", "analytics", "map", "chat"]),
 }
 
 export function navSectionsForRole(role: RoleKey): NavSection[] {

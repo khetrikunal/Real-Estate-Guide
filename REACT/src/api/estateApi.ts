@@ -50,9 +50,14 @@ export const estateApi = {
     update: (id: string | number, body: Record<string, unknown>) => apiRequest(`/projects/${id}`, { method: 'PUT', body }),
     patch: (id: string | number, body: Record<string, unknown>) => apiRequest(`/projects/${id}`, { method: 'PATCH', body }),
     remove: (id: string | number) => apiRequest(`/projects/${id}`, { method: 'DELETE' }),
+    trashList: () => apiRequest<unknown[]>('/projects/trash'),
+    moveToTrash: (id: string | number) => apiRequest(`/projects/${id}/trash`, { method: 'PUT' }),
+    restore: (id: string | number) => apiRequest(`/projects/${id}/restore`, { method: 'PUT' }),
+    permanentDelete: (id: string | number) => apiRequest(`/projects/${id}/permanent`, { method: 'DELETE' }),
     sell: (id: string | number, body: Record<string, unknown>) => apiRequest(`/projects/${id}/sell`, { method: 'POST', body }),
     documents: (id: string | number) => apiRequest(`/documents/${id}`),
-    uploadDocument: (projectId: string | number, formData: FormData) => upload(`/documents/upload/${projectId}`, formData),
+    uploadDocument: (projectId: string | number, formData: FormData, query?: Record<string, string | number>) =>
+      upload(`/documents/upload/${projectId}${query ? '?' + new URLSearchParams(query as any).toString() : ''}`, formData),
     uploadCover: (projectId: string | number, formData: FormData) => upload(`/projects/${projectId}/cover-photo`, formData),
     downloadDocumentUrl: (docId: string | number) => downloadUrl(`/api/documents/download/${docId}`),
     deleteDocument: (docId: string | number) => apiRequest(`/documents/${docId}`, { method: 'DELETE' }),
@@ -122,6 +127,12 @@ export const estateApi = {
   users: {
     detail: (id: string | number) => apiRequest(`/users/${id}`),
     updateProfile: (id: string | number, body: Record<string, unknown>) => apiRequest(`/users/${id}`, { method: 'PATCH', body }),
+    profile: (id: string | number) => apiRequest(`/users/${id}`),
+    uploadProfilePhoto: (userId: string | number, file: File) => {
+      const formData = new FormData();
+      formData.set('file', file);
+      return upload(`/users/${userId}/profile-photo`, formData);
+    },
     selfSignedSubadmins: () => apiRequest('/superadmin/subadmins/self-signed-up'),
     superadmin: {
       users: () => apiRequest('/superadmin/users'),
@@ -233,4 +244,59 @@ export const estateApi = {
   },
   globalSearch: (q: string) => apiRequest('/search/global', { query: { q } }),
   search: (q: string) => apiRequest('/search', { query: { q } }),
+  properties: {
+    list: () => apiRequest<unknown[]>('/properties'),
+    create: (body: Record<string, unknown>) => apiRequest('/properties', { method: 'POST', body }),
+    detail: (id: string | number) => apiRequest(`/properties/${id}`),
+    patch: (id: string | number, body: Record<string, unknown>) => apiRequest(`/properties/${id}`, { method: 'PATCH', body }),
+    remove: (id: string | number) => apiRequest(`/properties/${id}`, { method: 'DELETE' }),
+    hierarchy: (propertyId: string | number) => apiRequest<any>(`/properties/${propertyId}/hierarchy`),
+    
+    // Buildings
+    buildings: (propertyId: string | number) => apiRequest<unknown[]>(`/properties/${propertyId}/buildings`),
+    createBuilding: (propertyId: string | number, body: Record<string, unknown>) =>
+      apiRequest(`/properties/${propertyId}/buildings`, { method: 'POST', body }),
+    getBuilding: (propertyId: string | number, buildingId: string | number) =>
+      apiRequest(`/properties/${propertyId}/buildings/${buildingId}`),
+    updateBuilding: (propertyId: string | number, buildingId: string | number, body: Record<string, unknown>) =>
+      apiRequest(`/properties/${propertyId}/buildings/${buildingId}`, { method: 'PATCH', body }),
+    deleteBuilding: (propertyId: string | number, buildingId: string | number) =>
+      apiRequest(`/properties/${propertyId}/buildings/${buildingId}`, { method: 'DELETE' }),
+
+    // Floors
+    floors: (propertyId: string | number, buildingId: string | number) =>
+      apiRequest<unknown[]>(`/properties/${propertyId}/buildings/${buildingId}/floors`),
+    createFloor: (propertyId: string | number, buildingId: string | number, body: Record<string, unknown>) =>
+      apiRequest(`/properties/${propertyId}/buildings/${buildingId}/floors`, { method: 'POST', body }),
+    getFloor: (propertyId: string | number, buildingId: string | number, floorId: string | number) =>
+      apiRequest(`/properties/${propertyId}/buildings/${buildingId}/floors/${floorId}`),
+    updateFloor: (propertyId: string | number, buildingId: string | number, floorId: string | number, body: Record<string, unknown>) =>
+      apiRequest(`/properties/${propertyId}/buildings/${buildingId}/floors/${floorId}`, { method: 'PATCH', body }),
+    deleteFloor: (propertyId: string | number, buildingId: string | number, floorId: string | number) =>
+      apiRequest(`/properties/${propertyId}/buildings/${buildingId}/floors/${floorId}`, { method: 'DELETE' }),
+
+    // Units
+    unitsForFloor: (propertyId: string | number, buildingId: string | number, floorId: string | number, query?: Record<string, string>) =>
+      apiRequest<unknown[]>(`/properties/${propertyId}/buildings/${buildingId}/floors/${floorId}/units`, { query }),
+    createUnit: (propertyId: string | number, buildingId: string | number, floorId: string | number, body: Record<string, unknown>) =>
+      apiRequest(`/properties/${propertyId}/buildings/${buildingId}/floors/${floorId}/units`, { method: 'POST', body }),
+    allUnits: (propertyId: string | number, query?: Record<string, string>) =>
+      apiRequest<unknown[]>(`/properties/${propertyId}/units`, { query }),
+    getUnit: (propertyId: string | number, unitId: string | number) =>
+      apiRequest(`/properties/${propertyId}/units/${unitId}`),
+    updateUnit: (propertyId: string | number, unitId: string | number, body: Record<string, unknown>) =>
+      apiRequest(`/properties/${propertyId}/units/${unitId}`, { method: 'PATCH', body }),
+    deleteUnit: (propertyId: string | number, unitId: string | number) =>
+      apiRequest(`/properties/${propertyId}/units/${unitId}`, { method: 'DELETE' }),
+
+    // Unit Documents
+    unitDocuments: (propertyId: string | number, unitId: string | number) =>
+      apiRequest<unknown[]>(`/properties/${propertyId}/units/${unitId}/documents`),
+    uploadUnitDocument: (propertyId: string | number, unitId: string | number, formData: FormData) =>
+      upload(`/properties/${propertyId}/units/${unitId}/documents`, formData),
+    deleteUnitDocument: (propertyId: string | number, unitId: string | number, documentId: string | number) =>
+      apiRequest(`/properties/${propertyId}/units/${unitId}/documents/${documentId}`, { method: 'DELETE' }),
+    downloadUnitDocumentUrl: (propertyId: string | number, unitId: string | number, documentId: string | number) =>
+      `/api/properties/${propertyId}/units/${unitId}/documents/${documentId}/download`,
+  },
 };

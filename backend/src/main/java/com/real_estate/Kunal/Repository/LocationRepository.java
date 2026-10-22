@@ -16,6 +16,10 @@ public interface LocationRepository extends JpaRepository<Location, Long> {
 
 	Optional<Location> findByCityIgnoreCaseAndStateIgnoreCaseAndAreaIgnoreCase(String city, String state, String area);
 
+	boolean existsByCityIgnoreCaseAndStateIgnoreCaseAndAreaIgnoreCase(String city, String state, String area);
+
+	List<Location> findAllByOrderByStateAscCityAscAreaAsc();
+
 	Optional<Location> findByCityIgnoreCaseAndAreaIsNull(String city);
 
 	/** Returns all area-specific location entries for a given city (where area is not null). */

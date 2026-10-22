@@ -24,6 +24,8 @@ export type Property = {
   longitude?: number
   googleMapsUrl?: string
   noImage?: boolean
+  isDeleted?: boolean
+  deletedAt?: string
   raw?: Record<string, unknown>
 }
 

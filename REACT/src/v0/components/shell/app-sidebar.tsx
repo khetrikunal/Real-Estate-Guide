@@ -10,9 +10,10 @@ import { useAppReducedMotion } from "@app/motion"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useAuth } from "@app/auth/AuthContext"
+import { roleFromUser } from "@app/coverage/features"
 import { Logomark } from "@/components/brand/logo"
 import { navSectionsForRole } from "@/lib/nav"
 import { ROLES, type RoleKey } from "@/lib/roles"
@@ -28,9 +29,26 @@ interface AppSidebarProps {
 export function AppSidebar({ role, collapsed, onToggleCollapsed, onOpenProfile, onOpenCommand }: AppSidebarProps) {
   const pathname = usePathname()
   const roleDef = ROLES[role]
-  const { logout } = useAuth()
+  const { logout, user, role: authRole, ready } = useAuth()
   const reduceMotion = useAppReducedMotion()
   const navSections = React.useMemo(() => navSectionsForRole(role), [role])
+
+  const userRoleKey = roleFromUser(user?.role ?? (user as any)?.userRole ?? authRole, role)
+  const userRoleLabel = ROLES[userRoleKey]?.label ?? roleDef.label
+  const displayName =
+    user?.name?.trim() ||
+    user?.fullName?.trim() ||
+    (user?.email ? user.email.split("@")[0] : "") ||
+    (ready ? "User" : "Loading...")
+  const profilePhotoUrl =
+    typeof user?.profilePhotoUrl === "string" && user.profilePhotoUrl ? user.profilePhotoUrl : undefined
+  const userInitials = React.useMemo(() => {
+    const parts = displayName.trim().split(/\s+/).filter(Boolean)
+    if (parts.length === 0) return "U"
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  }, [displayName])
+
   const handleLogout = async () => {
     await logout()
     window.location.assign(`/login/${role}`)
@@ -54,7 +72,7 @@ export function AppSidebar({ role, collapsed, onToggleCollapsed, onOpenProfile, 
           {!collapsed && (
             <div className="flex min-w-0 flex-1 flex-col leading-tight">
               <span className="truncate text-sm font-bold tracking-tight">RealEstate</span>
-              <span className="truncate text-[8px] font-semibold tracking-[0.2em] text-[#c9a84c] uppercase">
+              <span className="truncate text-xs font-semibold tracking-wider text-[#c9a84c] uppercase">
                 — Guide — · {roleDef.label}
               </span>
             </div>
@@ -139,25 +157,72 @@ export function AppSidebar({ role, collapsed, onToggleCollapsed, onOpenProfile, 
 
         {/* User card + actions */}
         <div className="border-t border-sidebar-border p-3">
-          <button
-            onClick={onOpenProfile}
-            className={cn(
-              "group/user flex w-full items-center gap-3 rounded-lg border border-transparent p-2 text-left transition-[background-color,border-color,color,opacity,transform]",
-              "hover:border-sidebar-border hover:bg-sidebar-accent/60 active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-              collapsed && "justify-center p-1.5",
-            )}
-            data-click-spark="true"
-          >
-            <Avatar className="h-9 w-9 ring-2 ring-sidebar-border">
-              <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary">SU</AvatarFallback>
-            </Avatar>
-            {!collapsed && (
+          {collapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={onOpenProfile}
+                  className={cn(
+                    "group/user flex w-full items-center justify-center rounded-lg border border-transparent p-1.5 text-left transition-[background-color,border-color,color,opacity,transform]",
+                    "hover:border-sidebar-border hover:bg-sidebar-accent/60 active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+                  )}
+                  aria-label={`Profile: ${displayName} (${userRoleLabel})`}
+                  data-click-spark="true"
+                >
+                  <Avatar className="h-9 w-9 ring-2 ring-sidebar-border">
+                    {profilePhotoUrl ? (
+                      <AvatarImage src={profilePhotoUrl} alt={displayName} />
+                    ) : null}
+                    <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary">
+                      {!ready && !user ? "…" : userInitials}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="flex flex-col gap-0.5">
+                <span className="font-semibold">{displayName}</span>
+                <span className="text-[10px] text-muted-foreground">{userRoleLabel}</span>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <button
+              type="button"
+              onClick={onOpenProfile}
+              className={cn(
+                "group/user flex w-full items-center gap-3 rounded-lg border border-transparent p-2 text-left transition-[background-color,border-color,color,opacity,transform]",
+                "hover:border-sidebar-border hover:bg-sidebar-accent/60 active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+              )}
+              aria-label={`Profile: ${displayName} (${userRoleLabel})`}
+              data-click-spark="true"
+            >
+              <Avatar className="h-9 w-9 ring-2 ring-sidebar-border">
+                {profilePhotoUrl ? (
+                  <AvatarImage src={profilePhotoUrl} alt={displayName} />
+                ) : null}
+                <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary">
+                  {!ready && !user ? "…" : userInitials}
+                </AvatarFallback>
+              </Avatar>
               <div className="flex min-w-0 flex-1 flex-col leading-tight">
-                <span className="truncate text-sm font-semibold">Sherry User</span>
-                <span className="truncate text-[11px] text-muted-foreground">{roleDef.label}</span>
+                {!ready && !user ? (
+                  <>
+                    <div className="h-3.5 w-20 animate-pulse rounded bg-sidebar-accent" />
+                    <div className="mt-1 h-2.5 w-14 animate-pulse rounded bg-sidebar-accent/70" />
+                  </>
+                ) : (
+                  <>
+                    <span className="truncate text-sm font-semibold text-sidebar-foreground" title={displayName}>
+                      {displayName}
+                    </span>
+                    <span className="truncate text-[11px] text-muted-foreground" title={userRoleLabel}>
+                      {userRoleLabel}
+                    </span>
+                  </>
+                )}
               </div>
-            )}
-          </button>
+            </button>
+          )}
 
           {!collapsed && (
             <div className="mt-2 flex items-center gap-1.5">

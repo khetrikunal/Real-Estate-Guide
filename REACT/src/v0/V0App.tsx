@@ -19,6 +19,8 @@ const SearchPropertyPage = lazy(() => import('@/app/[role]/search-property/page'
 const PropertyDetailPage = lazy(() => import('@/app/[role]/search-property/[id]/page'));
 const PropertiesPage = lazy(() => import('@/app/[role]/properties/page'));
 const NewPropertyPage = lazy(() => import('@/app/[role]/properties/new/page'));
+const PropertyConfigurationsPage = lazy(() => import('@/app/[role]/properties/[propertyId]/configurations/page'));
+const ConfigurationDetailsPage = lazy(() => import('@/app/[role]/properties/[propertyId]/configurations/[configurationId]/page'));
 const SalesPage = lazy(() => import('@/app/[role]/sales/page'));
 const CrmPage = lazy(() => import('@/app/[role]/crm/page'));
 const AdminsPage = lazy(() => import('@/app/[role]/admins/page'));
@@ -105,6 +107,18 @@ function ProjectDocumentsRoute() {
   return <PropertyDetailPage params={{ role, id: projectId }} initialTab="documents" />;
 }
 
+function PropertyConfigurationsRoute() {
+  const role = useRoleParam();
+  const { propertyId = '' } = useParams();
+  return <PropertyConfigurationsPage params={{ role, propertyId }} />;
+}
+
+function ConfigurationDetailsRoute() {
+  const role = useRoleParam();
+  const { propertyId = '', configurationId = '' } = useParams();
+  return <ConfigurationDetailsPage params={{ role, propertyId, configurationId }} />;
+}
+
 function RoleShell({ children, hideTopbar = false }: { children: ReactNode; hideTopbar?: boolean }) {
   const role = useRoleParam();
   return (
@@ -160,6 +174,8 @@ export function V0App() {
           <Route path="/:role/properties" element={<RoleShell><LazyRoute><PropertiesRoute /></LazyRoute></RoleShell>} />
           <Route path="/:role/properties/new" element={<FullscreenRoleShell><LazyRoute><NewPropertyRoute /></LazyRoute></FullscreenRoleShell>} />
           <Route path="/:role/properties/:id/edit" element={<FullscreenRoleShell><LazyRoute><EditPropertyRoute /></LazyRoute></FullscreenRoleShell>} />
+          <Route path="/:role/properties/:propertyId/configurations" element={<RoleShell><LazyRoute><PropertyConfigurationsRoute /></LazyRoute></RoleShell>} />
+          <Route path="/:role/properties/:propertyId/configurations/:configurationId" element={<RoleShell><LazyRoute><ConfigurationDetailsRoute /></LazyRoute></RoleShell>} />
           <Route path="/:role/add-property" element={<LegacyAddPropertyRedirect />} />
           <Route path="/app/add-property" element={<Navigate to="/superadmin/properties/new" replace />} />
           <Route path="/:role/sales" element={<RoleShell><LazyRoute><SalesPage /></LazyRoute></RoleShell>} />
