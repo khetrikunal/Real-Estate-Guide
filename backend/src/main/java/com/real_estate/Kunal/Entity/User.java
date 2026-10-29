@@ -26,6 +26,7 @@ public class User {
     @Column(unique = true)
     private String email;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private String password;
 
     private String phone;
@@ -83,6 +84,7 @@ public class User {
     private Long addedBy;
 
     @Builder.Default
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Long tokenVersion = 0L;
 
     private LocalDateTime lastLoginAt;
@@ -111,6 +113,7 @@ public class User {
 
     private LocalDateTime lastSeen;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private String fcmToken;
 
     @CreationTimestamp

@@ -25,7 +25,13 @@ public class SubscriptionService {
     private final UserRepository userRepository;
 
     @Transactional
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('SUPER_ADMIN')")
     public Subscription subscribe(SubscribeRequest request) {
+
+        if (request.getUserId() == null || !userRepository.existsById(request.getUserId())
+                || request.getPrice() == null || !Double.isFinite(request.getPrice()) || request.getPrice() < 0) {
+            throw new IllegalArgumentException("A valid user and non-negative price are required");
+        }
 
         PlanType planType = resolvePlanType(request.getPlanType());
 
@@ -66,6 +72,7 @@ public class SubscriptionService {
         return saved;
     }
 
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('SUPER_ADMIN')")
     public Subscription subscribe(Long userId, Long planId) {
 
         Plan plan = planRepository.findById(planId)
@@ -132,7 +139,18 @@ public class SubscriptionService {
             return false;
         }
         LocalDate expiresAt = user.getSubscriptionExpiresAt();
-        return expiresAt == null || !expiresAt.isBefore(LocalDate.now());
+        return expiresAt != null && !expiresAt.isBefore(LocalDate.now());
+    }
+
+    public boolean canAccessSubscription(Long userId) {
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) return false;
+        return userRepository.findByEmail(auth.getName())
+                .map(actor -> actor.getRole() == Role.SUPER_ADMIN
+                        || java.util.Objects.equals(actor.getId(), userId)
+                        || (actor.getRole() == Role.ADMIN && userRepository.findById(userId)
+                            .map(target -> java.util.Objects.equals(target.getAddedBy(), actor.getId())).orElse(false)))
+                .orElse(false);
     }
 
     private PlanType resolvePlanType(String planType) {

@@ -10,6 +10,7 @@ import {
   Map,
   MessagesSquare,
   Trash2,
+  LayoutDashboard,
   type LucideIcon,
 } from "lucide-react"
 import type { RoleKey } from "./roles"
@@ -31,6 +32,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Primary",
     items: [
+      { key: 'overview', label: 'Overview', icon: LayoutDashboard, href: (r) => `/${r}/overview` },
       {
         key: "followup",
         label: "Follow-up",
@@ -39,7 +41,7 @@ export const NAV_SECTIONS: NavSection[] = [
       },
       {
         key: "properties",
-        label: "Add Property",
+        label: "Property portfolio",
         icon: Building2,
         href: (r) => `/${r}/properties`,
       },
@@ -63,13 +65,13 @@ export const NAV_SECTIONS: NavSection[] = [
       },
       {
         key: "admins",
-        label: "Admins",
+        label: "User management",
         icon: ShieldCheck,
         href: (r) => `/${r}/admins`,
       },
       {
         key: "locations",
-        label: "Add Location",
+        label: "Locations",
         icon: MapPinned,
         href: (r) => `/${r}/locations`,
       },
@@ -118,7 +120,7 @@ export function navSectionsForRole(role: RoleKey): NavSection[] {
   return NAV_SECTIONS
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => allowed.has(item.key)),
+      items: section.items.filter((item) => item.key === 'overview' || allowed.has(item.key)),
     }))
     .filter((section) => section.items.length > 0)
 }

@@ -42,6 +42,8 @@ public class SecurityConfig {
         http
                 .cors(cors -> cors.disable())
                 .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(
+                        org.springframework.security.config.http.SessionCreationPolicy.STATELESS))
                 .headers(headers -> headers
                         .contentTypeOptions(Customizer.withDefaults())
                         .frameOptions(frame -> frame.deny())
@@ -55,7 +57,6 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/test", "/test",
-                                "/api/auth/register",
                                 "/api/auth/login",
                             "/api/auth/forgot-password/send-otp",
                             "/api/auth/forgot-password/verify-otp",
@@ -81,6 +82,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/chat/files/**").permitAll()
                         .requestMatchers("/api/chat/**").authenticated()
+                        .requestMatchers("/api/auth/register").hasRole("SUPER_ADMIN")
                         .requestMatchers("/api/auth/me").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/users/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "EMPLOYEE")
                          .requestMatchers(HttpMethod.POST, "/api/users/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "EMPLOYEE")

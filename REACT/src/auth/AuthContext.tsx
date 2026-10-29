@@ -170,48 +170,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await queryClient.cancelQueries();
       queryClient.clear();
 
-      let response: any = null;
-      let finalRole: Role = 'subadmin';
-
-      if (selectedRole) {
-        finalRole = selectedRole;
-        response = await estateApi.auth.login({
-          email: loginEmailForRole(email, password, selectedRole),
-          password,
-          role: roleToBackend(selectedRole),
-        });
-      } else {
-        const emailLower = email.trim().toLowerCase();
-        let rolesToTry: Role[] = ['subadmin', 'employee', 'admin', 'superadmin'];
-        if (emailLower.includes('super')) {
-          rolesToTry = ['superadmin', 'admin', 'subadmin', 'employee'];
-        } else if (emailLower.includes('sub')) {
-          rolesToTry = ['subadmin', 'employee', 'admin', 'superadmin'];
-        } else if (emailLower.includes('admin')) {
-          rolesToTry = ['admin', 'subadmin', 'superadmin', 'employee'];
-        } else if (emailLower.includes('employee') || emailLower.includes('emp')) {
-          rolesToTry = ['employee', 'subadmin', 'admin', 'superadmin'];
-        }
-
-        let lastError: any = null;
-        for (const role of rolesToTry) {
-          try {
-            response = await estateApi.auth.login({
-              email: loginEmailForRole(email, password, role),
-              password,
-              role: roleToBackend(role),
-            });
-            finalRole = role;
-            break;
-          } catch (err) {
-            lastError = err;
-          }
-        }
-        if (!response) {
-          throw lastError ?? new Error('Login failed');
-        }
-      }
-
+      const response = await estateApi.auth.login({
+        email: selectedRole ? loginEmailForRole(email, password, selectedRole) : email.trim(),
+        password,
+        ...(selectedRole ? { role: roleToBackend(selectedRole) } : {}),
+      });
+      const finalRole: Role = selectedRole ?? 'employee';
       const nextToken = extractToken(response);
       if (!nextToken) throw new Error('Login response did not include a token');
       tokenStore.set(nextToken);

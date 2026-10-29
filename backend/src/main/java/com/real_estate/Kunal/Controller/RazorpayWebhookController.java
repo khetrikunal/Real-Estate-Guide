@@ -31,7 +31,7 @@ public class RazorpayWebhookController {
 
             log.info("Razorpay webhook received: event={}", event);
 
-            if (!"payment.captured".equals(event) && !"payment.authorized".equals(event)) {
+            if (!"payment.captured".equals(event)) {
                 log.info("Ignoring webhook event: {}", event);
                 return ResponseEntity.ok("ignored");
             }

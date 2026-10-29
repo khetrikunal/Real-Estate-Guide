@@ -11,7 +11,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 @Slf4j
 public class SubAdminRegistrationController {
@@ -23,10 +22,12 @@ public class SubAdminRegistrationController {
      * Returns order ID and registration token for the frontend to open Razorpay checkout.
      */
     @PostMapping("/subadmin/initiate-registration")
-    public ResponseEntity<?> initiateRegistration(@RequestBody InitiateRegistrationRequest request) {
+    public ResponseEntity<?> initiateRegistration(@jakarta.validation.Valid @RequestBody InitiateRegistrationRequest request) {
         try {
             InitiateRegistrationResponse response = registrationService.initiateRegistration(request);
             return ResponseEntity.ok(response);
+        } catch (org.springframework.web.server.ResponseStatusException e) {
+            throw e;
         } catch (IllegalStateException e) {
             return ResponseEntity.status(409).body(Map.of("error", e.getMessage()));
         } catch (IllegalArgumentException e) {
@@ -64,7 +65,7 @@ public class SubAdminRegistrationController {
      * Runs in parallel with the webhook — whichever completes first wins.
      */
     @PostMapping("/payments/verify-and-complete")
-    public ResponseEntity<?> verifyAndComplete(@RequestBody VerifyAndCompleteRequest request) {
+    public ResponseEntity<?> verifyAndComplete(@jakarta.validation.Valid @RequestBody VerifyAndCompleteRequest request) {
         try {
             RegistrationStatusResponse response = registrationService.verifyAndComplete(request);
             return ResponseEntity.ok(response);

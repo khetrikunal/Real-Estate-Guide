@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -44,48 +45,18 @@ public class PaymentService {
      * with status 'created'.
      */
     public Map<String, Object> createOrder(Map<String, Object> body) throws Exception {
-        String currency = (body.get("currency") != null && !body.get("currency").toString().isBlank())
-                ? body.get("currency").toString() : "INR";
+        String currency = currency(body);
 
         String razorpayOrderId;
         int amountInPaise;
-        Object amountObj = body.get("amountInPaise");
-        String planType = body.get("planType") != null ? body.get("planType").toString() : "";
+        String planType = normalizePlan(body.get("planType"));
         String assignedCity = body.get("assignedCity") != null ? body.get("assignedCity").toString() : null;
         String assignedState = body.get("assignedState") != null ? body.get("assignedState").toString() : null;
         String assignedArea = body.get("assignedArea") != null ? body.get("assignedArea").toString() : null;
 
-        if (amountObj != null && ((Number) amountObj).intValue() > 0) {
-            // Client explicitly provided an amount
-            amountInPaise = ((Number) amountObj).intValue();
-        } else if ("location_based".equalsIgnoreCase(planType) && assignedCity != null && assignedState != null) {
-            Double rate = locationService.getLocationRate(assignedCity, assignedState, assignedArea)
-                    .orElseThrow(() -> new RuntimeException(
-                            "No subscription rate found for " + assignedCity + (assignedArea != null ? ", " + assignedArea : "")));
-            if (rate <= 0) {
-                throw new RuntimeException("Subscription rate not configured for " + assignedCity);
-            }
-            amountInPaise = (int) (rate * 100); // rate in rupees → paise
-        } else {
-            // Default to ₹20,000 for full subscription
-            amountInPaise = 2000000;
-        }
+        amountInPaise = calculateRenewalAmountInPaise(planType, assignedCity, assignedState, assignedArea);
 
-        // When placeholder keys are used (local dev without real Razorpay account),
-        // skip the live API call and return a mock order id.
-        if (keyId.contains("YourTestKeyId")) {
-            razorpayOrderId = "order_mock_" + System.currentTimeMillis();
-        } else if (keyId == null || keyId.isBlank() || keySecret == null || keySecret.isBlank()) {
-            throw new RuntimeException("Razorpay keys are not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET environment variables.");
-        } else {
-            RazorpayClient client = new RazorpayClient(keyId, keySecret);
-            JSONObject orderRequest = new JSONObject();
-            orderRequest.put("amount", amountInPaise);
-            orderRequest.put("currency", currency);
-            orderRequest.put("receipt", "sub_" + System.currentTimeMillis());
-            Order order = client.orders.create(orderRequest);
-            razorpayOrderId = order.get("id");
-        }
+        razorpayOrderId = createGatewayOrder(amountInPaise, currency, "sub_" + System.currentTimeMillis());
 
         Payment payment = Payment.builder()
                 .razorpayOrderId(razorpayOrderId)
@@ -95,8 +66,7 @@ public class PaymentService {
                 .assignedCity(assignedCity)
                 .assignedState(assignedState)
                 .assignedArea(assignedArea)
-                .subscriptionRate(body.get("subscriptionRate") != null
-                        ? ((Number) body.get("subscriptionRate")).doubleValue() : null)
+                .subscriptionRate(amountInPaise / 100.0)
                 .status("created")
                 .build();
 
@@ -114,20 +84,19 @@ public class PaymentService {
      * Verifies the Razorpay payment signature using HMAC-SHA256.
      * Updates payment status to 'paid' on success.
      */
+    @Transactional
     public VerifyPaymentResponse verifyPayment(VerifyPaymentRequest req) {
-        Payment payment = paymentRepository.findByRazorpayOrderId(req.getRazorpayOrderId())
+        Payment payment = paymentRepository.findByOrderIdForUpdate(req.getRazorpayOrderId())
                 .orElseThrow(() -> new IllegalArgumentException("Order not found: " + req.getRazorpayOrderId()));
 
-        if ("paid".equals(payment.getStatus()) || "used".equals(payment.getStatus())) {
-            return new VerifyPaymentResponse(true, payment.getRazorpayPaymentId(), "Already verified");
-        }
-
-        boolean valid = isSignatureValid(req.getRazorpayOrderId(), req.getRazorpayPaymentId(), req.getRazorpaySignature());
-
-        if (!valid) {
-            payment.setStatus("failed");
-            paymentRepository.save(payment);
+        if (!isSignatureValid(req.getRazorpayOrderId(), req.getRazorpayPaymentId(), req.getRazorpaySignature())) {
             return new VerifyPaymentResponse(false, null, "Signature verification failed");
+        }
+        if ("paid".equals(payment.getStatus()) || "used".equals(payment.getStatus())) {
+            if (!java.util.Objects.equals(payment.getRazorpayPaymentId(), req.getRazorpayPaymentId())) {
+                return new VerifyPaymentResponse(false, null, "Payment does not match this order");
+            }
+            return new VerifyPaymentResponse(true, payment.getRazorpayPaymentId(), "Already verified");
         }
 
         payment.setRazorpayPaymentId(req.getRazorpayPaymentId());
@@ -143,8 +112,9 @@ public class PaymentService {
      * Retrieves a payment record by Razorpay payment ID.
      * Throws if not found or not in a usable 'paid' state.
      */
+    @Transactional
     public Payment getVerifiedPayment(String razorpayPaymentId) {
-        Payment payment = paymentRepository.findByRazorpayPaymentId(razorpayPaymentId)
+        Payment payment = paymentRepository.findByPaymentIdForUpdate(razorpayPaymentId)
                 .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + razorpayPaymentId));
 
         if (!"paid".equals(payment.getStatus())) {
@@ -159,6 +129,7 @@ public class PaymentService {
     /**
      * Marks the payment as used and links it to the newly-created SubAdmin.
      */
+    @Transactional
     public void markPaymentUsed(Long paymentId, Long subAdminId) {
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
@@ -186,7 +157,8 @@ public class PaymentService {
             mac.init(keySpec);
             byte[] hmac = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
             String generated = HexFormat.of().formatHex(hmac);
-            return generated.equalsIgnoreCase(signature);
+            return signature != null && java.security.MessageDigest.isEqual(
+                    generated.getBytes(StandardCharsets.UTF_8), signature.getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
             return false;
         }
@@ -203,10 +175,12 @@ public class PaymentService {
         com.real_estate.Kunal.Entity.User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        String currency = (body.get("currency") != null && !body.get("currency").toString().isBlank())
-                ? body.get("currency").toString() : "INR";
+        if (user.getRole() != com.real_estate.Kunal.Entity.Role.SUB_ADMIN) {
+            throw new IllegalArgumentException("Only Sub Admin subscriptions can be renewed");
+        }
+        String currency = currency(body);
 
-        String planType = body.get("planType") != null ? body.get("planType").toString() : "";
+        String planType = normalizePlan(body.get("planType"));
         String assignedCity = body.get("assignedCity") != null ? body.get("assignedCity").toString() : null;
         String assignedState = body.get("assignedState") != null ? body.get("assignedState").toString() : null;
         String assignedArea = body.get("assignedArea") != null ? body.get("assignedArea").toString() : null;
@@ -214,19 +188,7 @@ public class PaymentService {
         int amountInPaise = calculateRenewalAmountInPaise(planType, assignedCity, assignedState, assignedArea);
 
         String razorpayOrderId;
-        if (keyId == null || keyId.isBlank() || keySecret == null || keySecret.isBlank()) {
-            throw new RuntimeException("Razorpay keys are not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET environment variables.");
-        } else if (keyId.contains("YourTestKeyId")) {
-            razorpayOrderId = "order_mock_" + System.currentTimeMillis();
-        } else {
-            RazorpayClient client = new RazorpayClient(keyId, keySecret);
-            JSONObject orderRequest = new JSONObject();
-            orderRequest.put("amount", amountInPaise);
-            orderRequest.put("currency", currency);
-            orderRequest.put("receipt", "renew_" + user.getId() + "_" + System.currentTimeMillis());
-            Order order = client.orders.create(orderRequest);
-            razorpayOrderId = order.get("id");
-        }
+        razorpayOrderId = createGatewayOrder(amountInPaise, currency, "renew_" + user.getId() + "_" + System.currentTimeMillis());
 
         Payment payment = Payment.builder()
                 .razorpayOrderId(razorpayOrderId)
@@ -253,6 +215,7 @@ public class PaymentService {
     /**
      * Verifies a renewal payment and extends the user's subscription by 1 month.
      */
+    @Transactional
     public VerifyPaymentResponse verifyRenewalPayment(VerifyPaymentRequest req) {
         // First verify the payment signature
         VerifyPaymentResponse response = verifyPayment(req);
@@ -260,10 +223,17 @@ public class PaymentService {
             return response;
         }
 
-        Payment payment = paymentRepository.findByRazorpayOrderId(req.getRazorpayOrderId())
+        Payment payment = paymentRepository.findByOrderIdForUpdate(req.getRazorpayOrderId())
                 .orElseThrow(() -> new IllegalArgumentException("Order not found: " + req.getRazorpayOrderId()));
 
-        com.real_estate.Kunal.Entity.User user = userRepository.findById(payment.getSubAdminId())
+        if (payment.getSubAdminId() == null || "used".equals(payment.getStatus())) {
+            throw new IllegalArgumentException("Order is not an unused renewal order");
+        }
+        if (payment.getRenewalAppliedAt() != null) {
+            return new VerifyPaymentResponse(true, payment.getRazorpayPaymentId(), "Renewal already applied");
+        }
+
+        com.real_estate.Kunal.Entity.User user = userRepository.findByIdForUpdate(payment.getSubAdminId())
                 .orElseThrow(() -> new RuntimeException("User not found for renewal order"));
 
         user.setSubscriptionType(payment.getPlanType());
@@ -287,6 +257,8 @@ public class PaymentService {
                 today,
                 endDate
         );
+        payment.setRenewalAppliedAt(LocalDateTime.now());
+        paymentRepository.save(payment);
 
         return new VerifyPaymentResponse(true, req.getRazorpayPaymentId(), "Subscription renewed successfully");
     }
@@ -310,12 +282,43 @@ public class PaymentService {
             String area = areas.size() > i ? areas.get(i) : null;
             Double rate = locationService.getLocationRate(city, state, area)
                     .orElseThrow(() -> new RuntimeException("No subscription rate found for " + city + (area != null ? ", " + area : "")));
-            if (rate <= 0) {
+            if (!Double.isFinite(rate) || rate <= 0) {
                 throw new RuntimeException("Subscription rate not configured for " + city);
             }
             totalRate += rate;
         }
-        return (int) Math.round(totalRate * 100);
+        long amount = java.math.BigDecimal.valueOf(totalRate).movePointRight(2)
+                .setScale(0, java.math.RoundingMode.HALF_UP).longValueExact();
+        if (amount <= 0 || amount > Integer.MAX_VALUE) throw new IllegalArgumentException("Invalid subscription rate");
+        return (int) amount;
+    }
+
+    protected String createGatewayOrder(int amount, String currency, String receipt) throws Exception {
+        if (keyId == null || keyId.isBlank() || keySecret == null || keySecret.isBlank()
+                || keyId.contains("YourTestKeyId")) {
+            throw new IllegalStateException("Razorpay keys are not configured");
+        }
+        RazorpayClient client = new RazorpayClient(keyId, keySecret);
+        JSONObject order = new JSONObject();
+        order.put("amount", amount);
+        order.put("currency", currency);
+        order.put("receipt", receipt);
+        return client.orders.create(order).get("id");
+    }
+
+    private String normalizePlan(Object raw) {
+        String plan = raw == null ? "full" : raw.toString().trim().toLowerCase(java.util.Locale.ROOT);
+        return switch (plan) {
+            case "full", "all", "all_locations" -> "full";
+            case "custom", "location_based" -> "location_based";
+            default -> throw new IllegalArgumentException("Invalid subscription plan");
+        };
+    }
+
+    private String currency(Map<String, Object> body) {
+        String currency = body.getOrDefault("currency", "INR").toString();
+        if (!"INR".equals(currency)) throw new IllegalArgumentException("Subscriptions must be paid in INR");
+        return currency;
     }
 
     private List<String> splitCsv(String raw) {

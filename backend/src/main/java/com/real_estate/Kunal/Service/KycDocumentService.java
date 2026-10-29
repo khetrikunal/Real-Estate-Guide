@@ -34,6 +34,9 @@ public class KycDocumentService {
         UUID registrationToken = parseUuid(token);
         TempRegistration temp = tempRegistrationRepository.findByRegistrationToken(registrationToken)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Registration not found"));
+        if (temp.getExpiresAt() == null || temp.getExpiresAt().isBefore(java.time.LocalDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Registration expired");
+        }
         if (!"PENDING".equals(temp.getStatus()) && !"PAID".equals(temp.getStatus())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Registration is not accepting uploads");
         }

@@ -39,8 +39,6 @@
 
 /* Validation/error text should also be high contrast */
 .reference-add-project-page .text-destructive,
-.reference-add-project-page [class*="destructive"],
-.reference-add-project-page .text-destructive\/*,
 .reference-add-project-page [class*="destructive"] {
   color: #991b1b !important;
 }

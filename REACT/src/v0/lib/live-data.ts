@@ -464,10 +464,10 @@ export function useTrashProjectsData() {
 
 export function useLeadsData() {
   const { ready, token } = useAuth()
-  const { data = LEADS, isFetching, error } = useQuery({
+  const { data = [], isFetching, error } = useQuery({
     queryKey: ["v0", "leads"],
     queryFn: async () => asArray(await estateApi.leads.list()).map(mapLead),
-    initialData: LEADS,
+    initialData: [],
     staleTime: 0,
     enabled: ready && Boolean(token),
   })
@@ -519,11 +519,11 @@ export function useUsersData() {
       ])
       return [...asArray(admins), ...asArray(subAdmins), ...asArray(employees)].map(mapUser)
     },
-    initialData: ADMINS,
+    initialData: [],
     staleTime: 0,
     enabled: ready && Boolean(token),
   })
-  const users = usersQuery.data ?? ADMINS
+  const users = usersQuery.data ?? []
   return {
     admins: users.filter((user) => user.role === "Admin"),
     subAdmins: users.filter((user) => user.role === "Sub Admin"),
@@ -538,7 +538,7 @@ export function useLocationsData() {
   const locationsQuery = useQuery({
     queryKey: ["v0", "locations"],
     queryFn: async () => asArray(await estateApi.locations.list()).map(mapLocation),
-    initialData: LOCATIONS,
+    initialData: [],
     staleTime: 0,
     enabled: ready && Boolean(token),
   })
@@ -550,7 +550,7 @@ export function useLocationsData() {
     enabled: ready && Boolean(token),
   })
   return {
-    locations: locationsQuery.data ?? LOCATIONS,
+    locations: locationsQuery.data ?? [],
     areas: areasQuery.data ?? AREAS,
     isFetching: locationsQuery.isFetching || areasQuery.isFetching,
     error: locationsQuery.error ?? areasQuery.error,

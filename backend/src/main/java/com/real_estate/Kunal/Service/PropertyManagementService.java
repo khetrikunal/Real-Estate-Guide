@@ -34,6 +34,7 @@ public class PropertyManagementService {
     private final ObjectStorageService objectStorageService;
     private final FileUploadSecurityValidator fileUploadSecurityValidator;
     private final SignedMediaUrlService signedMediaUrlService;
+    private final ProjectService projectService;
 
     // ==========================================
     // BUILDINGS
@@ -229,8 +230,15 @@ public class PropertyManagementService {
         validateProject(propertyId);
         List<PropertyUnit> units;
         if (floorId != null) {
+            Floor floor = floorRepository.findById(floorId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Floor not found"));
+            if (!Objects.equals(floor.getProjectId(), propertyId)
+                    || (buildingId != null && !Objects.equals(floor.getBuildingId(), buildingId))) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Floor not found in specified property/building");
+            }
             units = propertyUnitRepository.findByFloorIdOrderByUnitNumberAsc(floorId);
         } else if (buildingId != null) {
+            validateBuilding(propertyId, buildingId);
             units = propertyUnitRepository.findByBuildingIdOrderByFloorIdAscUnitNumberAsc(buildingId);
         } else {
             units = propertyUnitRepository.findByPropertyProjectIdOrderByBuildingIdAscFloorIdAscUnitNumberAsc(propertyId);
@@ -467,6 +475,25 @@ public class PropertyManagementService {
         return objectStorageService.loadProjectDocument(doc.getFilePath());
     }
 
+    @Transactional(readOnly = true)
+    public ObjectStorageService.StoredObject downloadSignedUnitDocument(
+            Long propertyId, Long unitId, Long documentId, Long exp, String sig) throws IOException {
+        String path = "/api/properties/" + propertyId + "/units/" + unitId + "/documents/" + documentId + "/download";
+        if (!signedMediaUrlService.isValid(path, exp, sig)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid or expired document link");
+        }
+        Project project = projectRepository.findById(propertyId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Property not found"));
+        if (Boolean.TRUE.equals(project.getIsDeleted())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Property not found");
+        }
+        propertyUnitRepository.findByIdAndPropertyProjectId(unitId, propertyId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found"));
+        UnitDocument doc = unitDocumentRepository.findByIdAndUnitId(documentId, unitId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Document not found"));
+        return objectStorageService.loadProjectDocument(doc.getFilePath());
+    }
+
     // ==========================================
     // HIERARCHY & DASHBOARD SUMMARY
     // ==========================================
@@ -525,8 +552,13 @@ public class PropertyManagementService {
     // ==========================================
 
     private Project validateProject(Long projectId) {
-        return projectRepository.findById(projectId)
+        Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Property project not found"));
+        if (Boolean.TRUE.equals(project.getIsDeleted())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Property project not found");
+        }
+        projectService.ensureCanModifyProject(project);
+        return project;
     }
 
     private Building validateBuilding(Long propertyId, Long buildingId) {

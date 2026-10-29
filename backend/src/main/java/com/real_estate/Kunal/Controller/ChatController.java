@@ -53,13 +53,16 @@ public class ChatController {
                     "conversationId", conv.getId().toString(),
                     "type", conv.getType()));
         } else {
+            if (!"group".equals(type)) throw new IllegalArgumentException("Unsupported conversation type");
             // Group conversation
             String groupName = (String) body.get("name");
             @SuppressWarnings("unchecked")
             List<String> participantIds = (List<String>) body.get("participantIds");
             List<Long> ids = participantIds.stream()
                     .map(Long::valueOf)
+                    .distinct()
                     .toList();
+            chatService.validateParticipants(currentUser, ids);
             if (!ids.contains(currentUser.getId())) {
                 ids = new ArrayList<>(ids);
                 ids.add(currentUser.getId());
@@ -102,8 +105,8 @@ public class ChatController {
 
     // GET /api/chat/users/search?q=query
     @GetMapping("/users/search")
-    public List<Map<String, Object>> searchUsers(@RequestParam("q") String query) {
-        return chatService.searchUsers(query).stream()
+    public List<Map<String, Object>> searchUsers(@RequestParam("q") String query, Principal principal) {
+        return chatService.searchUsers(query, chatService.getUserByEmail(principal.getName())).stream()
                 .map(u -> {
                     Map<String, Object> map = new LinkedHashMap<>();
                     map.put("userId", u.getId().toString());
@@ -325,7 +328,7 @@ public class ChatController {
         map.put("timestamp", msg.getCreatedAt() != null ? msg.getCreatedAt().toString() : null);
         map.put("editedAt", msg.getEditedAt() != null ? msg.getEditedAt().toString() : null);
         map.put("status", "sent");
-        map.put("readBy", List.of(msg.getSender().getId().toString()));
+        map.put("readBy", chatService.readBy(msg));
         return map;
     }
 

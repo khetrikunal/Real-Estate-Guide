@@ -1488,8 +1488,7 @@ function NewProjectContent({ role, editProjectId }: { role: string; editProjectI
 
                     <div className="mt-3">
                       <MapPickerCard
-                        latitude={coords.lat}
-                        longitude={coords.lng}
+                        value={coords}
                         onChange={({ lat, lng }) => setCoords({ lat, lng })}
                       />
                     </div>
@@ -1945,8 +1944,7 @@ function NewProjectContent({ role, editProjectId }: { role: string; editProjectI
 
                     <div className="mt-3">
                       <MapPickerCard
-                        latitude={coords.lat}
-                        longitude={coords.lng}
+                        value={coords}
                         onChange={({ lat, lng }) => setCoords({ lat, lng })}
                       />
                     </div>

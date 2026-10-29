@@ -6,9 +6,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   Plus, Search, Eye, Trash2, ShieldCheck, Mail, Phone, FileText, X,
   Camera, Upload, User2, Briefcase, Lock, CheckCircle2, AlertCircle,
-  Building2, IdCard, EyeOff, Loader2, UserPlus, Shield
+  Building2, IdCard, EyeOff, Loader2, UserPlus, Shield, ArrowLeft
 } from "lucide-react"
-import { useParams } from "react-router-dom"
+import { useParams, useNavigate, useLocation } from "react-router-dom"
 import { estateApi } from "@app/api/estateApi"
 import { queryKeys } from "@app/api/queryKeys"
 import { PageHeader } from "@/components/shell/page-header"
@@ -268,13 +268,15 @@ function IdCardPreview({ form, role, cfg }: {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function AdminsPage() {
+export default function AdminsPage({ createUserRole }: { createUserRole?: CreateRole }) {
   const { role = "superadmin" } = useParams()
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
   const isSuper = role === "superadmin"
-  const [tab, setTab] = useState<Tab>("admins")
+  const [tab, setTab] = useState<Tab>(pathname.includes('/subadmins') ? 'subadmins' : pathname.includes('/employees') ? 'employees' : 'admins')
   const [query, setQuery] = useState("")
   const [selectedUser, setSelectedUser] = useState<null | Record<string, unknown>>(null)
-  const [createRole, setCreateRole] = useState<CreateRole | null>(null)
+  const [createRole] = useState<CreateRole | null>(createUserRole ?? null)
   const [createForm, setCreateForm] = useState(emptyCreateForm)
   const [showPw, setShowPw] = useState(false)
   const [showConfirmPw, setShowConfirmPw] = useState(false)
@@ -335,7 +337,7 @@ export default function AdminsPage() {
       return created
     },
     onSuccess: () => {
-      closeDrawer()
+      returnToUsers()
       queryClient.invalidateQueries({ queryKey: ["v0", "users"] })
       queryClient.invalidateQueries({ queryKey: queryKeys.users.all })
     },
@@ -349,14 +351,14 @@ export default function AdminsPage() {
   const pwStr         = passwordStrength(createForm.password)
 
   // Handlers
-  function openDrawer(r: CreateRole) {
-    setCreateRole(r)
-    setCreateForm(emptyCreateForm)
-    setShowPw(false); setShowConfirmPw(false); setWarnValidation(false)
+  function openCreatePage(r: CreateRole) {
+    const section = r === 'SubAdmin' ? 'subadmins' : r === 'Employee' ? 'employees' : 'admins'
+    navigate(`/${role}/${section}/new`)
   }
-  function closeDrawer() {
-    setCreateRole(null); setCreateForm(emptyCreateForm)
-    createMutation.reset(); setWarnValidation(false)
+  function returnToUsers() {
+    if (createForm.photoPreviewUrl) URL.revokeObjectURL(createForm.photoPreviewUrl)
+    const section = createRole === 'SubAdmin' ? 'subadmins' : createRole === 'Employee' ? 'employees' : 'admins'
+    navigate(`/${role}/${section}`)
   }
   function setVal(key: string, val: string) {
     setCreateForm((f) => ({ ...f, [key]: val }))
@@ -387,6 +389,7 @@ export default function AdminsPage() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="reference-page-panel mx-auto my-5 w-[calc(100%-64px)] max-w-[1560px] space-y-6 px-10 py-10">
+      {!createRole && <>
       <PageHeader
         eyebrow="Directory"
         title="User Management"
@@ -394,14 +397,14 @@ export default function AdminsPage() {
         actions={
           <div className="flex flex-wrap gap-2">
             {isSuper && (
-              <Button variant="outline" className="gap-2 active:scale-[0.98]" onClick={() => openDrawer("Admin")}>
+              <Button variant="outline" className="gap-2 active:scale-[0.98]" onClick={() => openCreatePage("Admin")}>
                 <Plus className="size-4" /> Add Admin
               </Button>
             )}
-            <Button variant="outline" className="gap-2 active:scale-[0.98]" onClick={() => openDrawer("SubAdmin")}>
+            <Button variant="outline" className="gap-2 active:scale-[0.98]" onClick={() => openCreatePage("SubAdmin")}>
               <Plus className="size-4" /> Add Sub Admin
             </Button>
-            <Button className="gap-2 active:scale-[0.98]" onClick={() => openDrawer("Employee")}>
+            <Button className="gap-2 active:scale-[0.98]" onClick={() => openCreatePage("Employee")}>
               <Plus className="size-4" /> Add Employee
             </Button>
           </div>
@@ -554,38 +557,20 @@ export default function AdminsPage() {
         </div>
       )}
 
-      {/* ── Create ID Drawer ──────────────────────────────────────────── */}
+      </>}
+      {/* Dedicated creation page, rendered inside the shared workspace shell. */}
       {createRole && (
-        <div className="fixed inset-0 z-50 flex items-stretch bg-background/70 backdrop-blur-sm">
-          {/* Click-away backdrop */}
-          <div className="flex-1" onClick={closeDrawer} />
-
-          <PanelTransition motionKey={createRole} className="flex h-full flex-col" style={{ width: "min(960px,95vw)" }}>
-            <div className="flex h-full flex-col overflow-hidden rounded-l-2xl border border-r-0 border-border/80 bg-background shadow-2xl">
-
-              {/* Header */}
-              <div className={cn("flex items-center justify-between gap-4 px-6 py-4 border-b border-border/60 shrink-0", cfg?.bg)}>
-                <div className="flex items-center gap-3">
-                  <div className={cn("grid size-9 place-items-center rounded-xl bg-background/60 shadow-sm", cfg?.color)}>
-                    <RoleIcon className="size-5" />
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Create New</p>
-                    <h2 className="text-lg font-semibold leading-tight">{createRole === "SubAdmin" ? "Sub Admin" : createRole} ID</h2>
-                  </div>
-                </div>
-                <button onClick={closeDrawer}
-                  className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted/60 transition-colors"
-                  aria-label="Close">
-                  <X className="size-4" />
-                </button>
-              </div>
+        <section className="space-y-6">
+          <PageHeader eyebrow="User management" title={`Add ${createRole === 'SubAdmin' ? 'Sub Admin' : createRole}`}
+            description="Set up the account, profile, and access details for your team member."
+            actions={<Button type="button" variant="outline" onClick={returnToUsers}><ArrowLeft className="size-4" />Back to users</Button>} />
+            <div className="overflow-hidden rounded-xl border border-border bg-card">
 
               {/* Body */}
-              <div className="flex flex-1 overflow-hidden min-h-0">
+              <div className="grid lg:grid-cols-[minmax(0,1fr)_268px]">
 
                 {/* Scrollable form */}
-                <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
+                <div className="min-w-0 px-4 py-6 sm:px-6 space-y-8">
 
                   {/* §1 Profile */}
                   <FormSection icon={<User2 className="size-4" />} title="Profile Information" subtitle="Name, contact and personal details">
@@ -625,7 +610,7 @@ export default function AdminsPage() {
                             value={createForm.name} onChange={(e) => setVal("name", e.target.value)} />
                         </FormField>
                         <FormField label="Email Address" required>
-                          <Input id="create-email" type="email" placeholder="rahul@company.in"
+                          <Input id="create-email" type="email" autoComplete="off" placeholder="rahul@company.in"
                             value={createForm.email} onChange={(e) => setVal("email", e.target.value)} />
                         </FormField>
                         <FormField label="Mobile Number">
@@ -665,7 +650,7 @@ export default function AdminsPage() {
                           value={createForm.department} onChange={(e) => setVal("department", e.target.value)} />
                       </FormField>
                       <FormField label="Designation">
-                        <Input id="create-desg" placeholder="e.g. Sales Executive"
+                        <Input id="create-desg" autoComplete="off" placeholder="e.g. Sales Executive"
                           value={createForm.designation} onChange={(e) => setVal("designation", e.target.value)} />
                       </FormField>
                       <FormField label="Joining Date">
@@ -767,6 +752,7 @@ export default function AdminsPage() {
                       <FormField label="Password" required>
                         <div className="relative">
                           <Input id="create-password"
+                            autoComplete="new-password"
                             type={showPw ? "text" : "password"}
                             placeholder="Min 8 characters"
                             className="pr-10"
@@ -791,6 +777,7 @@ export default function AdminsPage() {
                       <FormField label="Confirm Password" required>
                         <div className="relative">
                           <Input id="create-confirm-pw"
+                            autoComplete="new-password"
                             type={showConfirmPw ? "text" : "password"}
                             placeholder="Re-enter password"
                             className={cn("pr-10",
@@ -850,7 +837,7 @@ export default function AdminsPage() {
               </div>
 
               {/* Footer */}
-              <div className="border-t border-border/60 px-6 py-4 flex items-center justify-between gap-4 bg-background/80 shrink-0">
+              <div className="border-t border-border/60 px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-4 bg-background/80">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   {canSubmit
                     ? <><CheckCircle2 className="size-3.5 text-emerald-500" /> Ready to create</>
@@ -858,7 +845,7 @@ export default function AdminsPage() {
                   }
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" type="button" onClick={closeDrawer}>Cancel</Button>
+                  <Button variant="outline" type="button" onClick={returnToUsers}>Cancel</Button>
                   <Button id="create-user-submit-btn" type="button"
                     disabled={createMutation.isPending}
                     onClick={handleCreate}
@@ -877,8 +864,7 @@ export default function AdminsPage() {
               </div>
 
             </div>
-          </PanelTransition>
-        </div>
+        </section>
       )}
     </div>
   )

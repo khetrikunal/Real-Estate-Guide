@@ -39,12 +39,8 @@ public class AuthCheckTest {
         req.setEmail("super@sherry.com");
         req.setPassword("sherry");
         req.setRole("SUPER_ADMIN");
-        try {
-            ResponseEntity<?> response = authController.login(req);
-            System.out.println("LOGIN SUCCESS: " + response.getStatusCode() + " " + response.getBody());
-        } catch (Exception ex) {
-            System.err.println("LOGIN FAILED: " + ex.getClass().getName() + " -> " + ex.getMessage());
-            ex.printStackTrace();
-        }
+        ResponseEntity<?> response = authController.login(req);
+        org.assertj.core.api.Assertions.assertThat(response.getStatusCode()).isEqualTo(org.springframework.http.HttpStatus.OK);
+        org.assertj.core.api.Assertions.assertThat(response.getBody()).isInstanceOf(com.real_estate.Kunal.DTO.LoginResponse.class);
     }
 }

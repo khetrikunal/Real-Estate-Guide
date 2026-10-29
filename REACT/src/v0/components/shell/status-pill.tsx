@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils"
+import { Badge } from '@/components/ui/badge'
 
 type Tone = "neutral" | "primary" | "success" | "warning" | "info" | "danger"
 
@@ -7,8 +8,7 @@ type Tone = "neutral" | "primary" | "success" | "warning" | "info" | "danger"
   primary: "bg-primary/12 text-primary border-primary/20",
   success: "bg-success/15 text-success border-success/25",
   warning: "bg-warning/15 text-warning border-warning/25",
-  // Remove blue/info accents for luxury gold theme.
-  info: "bg-warning/15 text-warning border-warning/25",
+  info: "bg-info/10 text-info border-info/20",
   danger: "bg-destructive/15 text-destructive border-destructive/25",
 }
 
@@ -25,7 +25,7 @@ export function StatusPill({
   className?: string
 }) {
   return (
-    <span
+    <Badge variant="outline"
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium",
         map[tone],
@@ -45,6 +45,6 @@ export function StatusPill({
         />
       )}
       {children}
-    </span>
+    </Badge>
   )
 }

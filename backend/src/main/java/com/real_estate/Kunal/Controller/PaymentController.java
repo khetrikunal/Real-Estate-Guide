@@ -1,7 +1,5 @@
 package com.real_estate.Kunal.Controller;
 
-import com.real_estate.Kunal.DTO.CreateOrderRequest;
-import com.real_estate.Kunal.DTO.CreateOrderResponse;
 import com.real_estate.Kunal.DTO.VerifyPaymentRequest;
 import com.real_estate.Kunal.DTO.VerifyPaymentResponse;
 import com.real_estate.Kunal.Service.PaymentService;
@@ -25,13 +23,8 @@ public class PaymentController {
      * before the new SubAdmin account exists.
      */
     @PostMapping("/create-order")
-    public ResponseEntity<?> createOrder(@RequestBody Map<String, Object> body) {
-        try {
-            Map<String, Object> response = paymentService.createOrder(body);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
-        }
+    public ResponseEntity<?> createOrder(@RequestBody Map<String, Object> body) throws Exception {
+        return ResponseEntity.ok(paymentService.createOrder(body));
     }
 
     /**
@@ -40,17 +33,8 @@ public class PaymentController {
      */
     @PostMapping("/verify")
     public ResponseEntity<?> verifyPayment(@Valid @RequestBody VerifyPaymentRequest request) {
-        try {
-            VerifyPaymentResponse response = paymentService.verifyPayment(request);
-            if (!response.isSuccess()) {
-                return ResponseEntity.status(400).body(response);
-            }
-            return ResponseEntity.ok(response);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
-        }
+        VerifyPaymentResponse response = paymentService.verifyPayment(request);
+        return ResponseEntity.status(response.isSuccess() ? 200 : 400).body(response);
     }
 
     /**
@@ -58,6 +42,7 @@ public class PaymentController {
      * Used by the SuperAdmin list to show payment status in SubAdmin cards.
      */
     @GetMapping("/by-subadmin/{subAdminId}")
+    @org.springframework.security.access.prepost.PreAuthorize("@subscriptionService.canAccessSubscription(#subAdminId)")
     public ResponseEntity<?> getPaymentBySubAdmin(@PathVariable Long subAdminId) {
         return paymentService.findPaymentBySubAdminId(subAdminId)
                 .<ResponseEntity<?>>map(ResponseEntity::ok)
@@ -69,17 +54,11 @@ public class PaymentController {
      * Public endpoint — used from login page when subscription is expired.
      */
     @PostMapping("/renew")
-    public ResponseEntity<?> createRenewalOrder(@RequestBody Map<String, Object> body) {
-        try {
-            String email = (String) body.get("email");
-            if (email == null || email.isBlank()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "email is required"));
-            }
-            Map<String, Object> response = paymentService.createRenewalOrder(body);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+    public ResponseEntity<?> createRenewalOrder(@RequestBody Map<String, Object> body) throws Exception {
+        if (!(body.get("email") instanceof String email) || email.isBlank()) {
+            throw new IllegalArgumentException("email is required");
         }
+        return ResponseEntity.ok(paymentService.createRenewalOrder(body));
     }
 
     /**
@@ -87,19 +66,8 @@ public class PaymentController {
      * Public endpoint — used from login page.
      */
     @PostMapping("/renew/verify")
-    public ResponseEntity<?> verifyRenewalPayment(@RequestBody Map<String, Object> body) {
-        try {
-            VerifyPaymentRequest req = new VerifyPaymentRequest();
-            req.setRazorpayOrderId((String) body.get("razorpayOrderId"));
-            req.setRazorpayPaymentId((String) body.get("razorpayPaymentId"));
-            req.setRazorpaySignature((String) body.get("razorpaySignature"));
-            VerifyPaymentResponse response = paymentService.verifyRenewalPayment(req);
-            if (!response.isSuccess()) {
-                return ResponseEntity.status(400).body(response);
-            }
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
-        }
+    public ResponseEntity<?> verifyRenewalPayment(@Valid @RequestBody VerifyPaymentRequest request) {
+        VerifyPaymentResponse response = paymentService.verifyRenewalPayment(request);
+        return ResponseEntity.status(response.isSuccess() ? 200 : 400).body(response);
     }
 }

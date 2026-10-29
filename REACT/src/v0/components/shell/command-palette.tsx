@@ -6,16 +6,17 @@ import { AnimatePresence, motion, type Transition } from "framer-motion"
 import { useAppReducedMotion } from "@app/motion"
 
 import {
+  Command,
   CommandDialog,
   CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
-  CommandSeparator,
+
 } from "@/components/ui/command"
 import { navSectionsForRole } from "@/lib/nav"
-import { ROLES, ROLE_ORDER, type RoleKey } from "@/lib/roles"
+import { type RoleKey } from "@/lib/roles"
 
 interface CommandPaletteProps {
   open: boolean
@@ -67,6 +68,7 @@ export function CommandPalette({ open, onOpenChange, role }: CommandPaletteProps
         description="Jump to any tool"
         className="reference-command-panel data-[state=open]:duration-200 data-[state=closed]:duration-150 motion-reduce:duration-0"
       >
+        <Command>
         <motion.div
           initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 8, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -89,21 +91,9 @@ export function CommandPalette({ open, onOpenChange, role }: CommandPaletteProps
                 })}
               </CommandGroup>
             ))}
-            <CommandSeparator />
-            <CommandGroup heading="Switch role">
-              {ROLE_ORDER.map((key) => {
-                const r = ROLES[key]
-                const Icon = r.icon
-                return (
-                  <CommandItem key={key} onSelect={() => go(`/${key}/followup`)}>
-                    <Icon className="h-4 w-4" />
-                    <span>Open as {r.label}</span>
-                  </CommandItem>
-                )
-              })}
-            </CommandGroup>
           </CommandList>
         </motion.div>
+        </Command>
       </CommandDialog>
     </>
   )

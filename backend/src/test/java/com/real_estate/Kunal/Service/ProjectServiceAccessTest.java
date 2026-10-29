@@ -153,7 +153,7 @@ class ProjectServiceAccessTest {
         activeSubscription(subadmin);
         responseDependencies(subadmin);
 
-        when(projectRepository.findByUploadedBy(subadmin.getId())).thenReturn(List.of(
+        when(projectRepository.findByUploadedByAndIsDeletedFalse(subadmin.getId())).thenReturn(List.of(
                 project(10L, "Baramati Project", "Baramati", "MIDC"),
                 project(11L, "Pune Project", "Pune", "Kasba")
         ));
@@ -178,7 +178,7 @@ class ProjectServiceAccessTest {
         activeSubscription(subadmin);
         responseDependencies(subadmin);
 
-        when(projectRepository.findByUploadedBy(subadmin.getId())).thenReturn(List.of(
+        when(projectRepository.findByUploadedByAndIsDeletedFalse(subadmin.getId())).thenReturn(List.of(
                 project(10L, "Baramati Project", "Baramati", "MIDC"),
                 project(11L, "Pune Project", "Pune", "Kasba")
         ));

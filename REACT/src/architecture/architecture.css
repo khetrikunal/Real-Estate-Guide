@@ -1,0 +1,94 @@
+/* Architectural identity. Loaded after the legacy theme so all routes share one palette. */
+:root {
+  color-scheme: light;
+  --background: #f5f2eb; --foreground: #23344a;
+  --card: #fffefa; --card-foreground: #23344a;
+  --popover: #fffefa; --popover-foreground: #23344a;
+  --primary: #1e324e; --primary-foreground: #ffffff;
+  --secondary: #f0eadd; --secondary-foreground: #4d4b43;
+  --muted: #eeebe4; --muted-foreground: #78818c;
+  --accent: #f3ead7; --accent-foreground: #886c39;
+  --border: #e2ddd2; --input: #e2ddd2; --ring: #b09155;
+  --sidebar: #1d2f47; --sidebar-foreground: #f5f2e9;
+  --sidebar-accent: #2b405c; --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #394c64; --sidebar-primary: #d7bd82;
+  --brand-gold: #af936a; --brand-gold-deep: #8e7452;
+  --bg: var(--background); --text: var(--foreground); --text-muted: #78818c;
+  --surface: #fffefa; --surface-2: #f2eee5;
+  --ref-bg: #f5f2eb; --ref-surface: #fffefa; --ref-surface-strong: #fffefa;
+  --ref-surface-soft: #f4eedf; --ref-border: #e2ddd2; --ref-border-strong: #d7cbb2;
+  --ref-text: #23344a; --ref-text-muted: #78818c; --ref-text-faint: #969ca4;
+  --ref-shadow-card: 0 4px 20px #23344a05;
+  --ref-radius-shell: 24px; --ref-radius-panel: 20px; --ref-radius-card: 18px;
+  --chart-1: #1f3b5e; --chart-2: #c4ab77; --chart-3: #b69a62; --chart-4: #8297ad;
+  --font-display: 'Plus Jakarta Sans', sans-serif;
+}
+:root.dark, [data-theme="dark"] {
+  color-scheme: dark;
+  --background: #152133; --foreground: #eeeae0; --card: #203149; --card-foreground: #eeeae0;
+  --popover: #203149; --popover-foreground: #eeeae0;
+  --primary: #d8bc7d; --primary-foreground: #16263c; --secondary: #30415a; --secondary-foreground: #eeeae0;
+  --muted: #30415a; --muted-foreground: #aab5c4; --accent: #30415a; --accent-foreground: #eeeae0;
+  --border: #40516a; --input: #40516a; --ring: #d8bc7d;
+  --ref-bg: #152133; --ref-surface: #203149; --ref-surface-strong: #203149; --ref-surface-soft: #30415a;
+  --ref-border: #40516a; --ref-text: #eeeae0; --ref-text-muted: #aab5c4; --ref-text-faint: #8898ad;
+}
+body { background: var(--background); color: var(--foreground); }
+.authenticated-background { background: var(--background); }
+.authenticated-background__bg, .authenticated-background__overlay, .motion-ambient-field { display: none; }
+.authenticated-background .reference-shell { background: var(--background); }
+:root .reference-shell .reference-sidebar {
+  background: #1d2f47 !important; color: #f2eee4 !important; border: 0 !important;
+  box-shadow: none; --ref-text: #f2eee4; --ref-text-muted: #b6c2d1; --ref-text-faint: #a3b2c4;
+  --muted-foreground: #b6c2d1; --foreground: #f2eee4; --sidebar-border: #394c64;
+}
+.reference-shell .reference-sidebar nav a { font-size: 13px !important; min-height: 43px; margin-block: 3px; }
+.reference-shell .reference-sidebar .eyebrow { color: #9cadc3; font-size: 9px !important; letter-spacing: .15em !important; margin: 13px 0 5px; }
+.reference-shell .reference-sidebar [data-active="true"] { background: #efe0ba !important; color: #233954 !important; box-shadow: 0 3px 16px #0000000a; }
+.reference-shell .reference-sidebar [data-active="true"] svg { color: #233954 !important; }
+.reference-shell .reference-sidebar [data-active="true"] > span[aria-hidden] { background: transparent !important; }
+.reference-shell .reference-sidebar > div:first-child { border-color: #394c64 !important; height: 86px !important; }
+.reference-shell .reference-sidebar .text-primary { color: #d8be85 !important; }
+.reference-shell .reference-sidebar .text-foreground { color: #f2eee4 !important; }
+:root .reference-shell .reference-topbar { background: var(--background) !important; box-shadow: none; border-color: var(--border) !important; min-height: 74px; }
+:root .reference-shell :is(.reference-page-panel, .reference-section, .reference-card, .reference-stat-card, .reference-table) {
+  background: var(--ref-surface) !important; border-color: var(--ref-border) !important; backdrop-filter: none; box-shadow: var(--ref-shadow-card);
+}
+.reference-page-panel::before { display: none; }
+.reference-page-title { font-size: clamp(26px, 3vw, 36px) !important; font-weight: 600 !important; letter-spacing: -.045em !important; }
+.reference-eyebrow { color: var(--primary) !important; letter-spacing: .16em !important; font-size: 10px !important; }
+:root .reference-shell :is(button, a)[class*="bg-primary"], :root .reference-shell .glow-primary { background: #1e324e !important; color: white !important; box-shadow: none !important; border-color: transparent !important; }
+.reference-shell .text-primary { color: var(--primary) !important; }
+.reference-shell :is(.bg-secondary, .bg-muted, .bg-background) { background-color: var(--muted) !important; }
+.reference-shell :is(input, textarea, [role="combobox"]) { background: var(--card) !important; border-color: var(--border) !important; border-radius: 12px; }
+.reference-shell :is(.reference-card, .reference-stat-card) { transition: transform .25s ease, box-shadow .25s ease; }
+.reference-shell :is(.reference-card, .reference-stat-card):hover { transform: translateY(-3px); box-shadow: 0 12px 30px #23344a0b; }
+.reference-shell .reference-search-field { background: var(--card) !important; border-color: var(--border) !important; box-shadow: 0 5px 24px #23395408; }
+.reference-search-glow { display: none; }
+.reference-shell .reference-search-field input { background: transparent !important; }
+.reference-shell .reference-section-title { font-size: 18px !important; font-weight: 600 !important; letter-spacing: -.025em !important; }
+.reference-shell :is(.border-border, .border-sidebar-border, .border-input) { border-color: var(--border) !important; }
+.estate-video-background { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; background: var(--background); }
+.estate-video-background :is(video, .estate-video-background__poster, .estate-video-background__tint) { position: absolute; inset: 0; width: 100%; height: 100%; }
+.estate-video-background video { object-fit: cover; opacity: 0; filter: saturate(.6); transition: opacity 1.2s ease; }
+.estate-video-background video.is-ready { opacity: .42; }
+.estate-video-background__poster { background: url('/media/architecture-background.jpg') center / cover; opacity: .3; }
+.estate-video-background__tint { background: linear-gradient(110deg, #f5f2ebe8 0%, #f5f2eba6 48%, #f5f2eb66 100%); }
+.estate-video-background--workspace video.is-ready { opacity: .22; }
+.estate-video-background--workspace .estate-video-background__tint { background: color-mix(in srgb, var(--background) 74%, transparent); }
+.estate-video-background--workspace .estate-video-background__poster { opacity: .15; }
+.estate-video-control { position: fixed; right: 18px; bottom: 15px; z-index: 30; display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px; border: 1px solid #c2cebc; border-radius: 30px; background: #fffefae8; color: #49634b; font-size: 9px; backdrop-filter: blur(10px); cursor: pointer; }
+.estate-video-control:focus-visible { outline: 2px solid #377452; outline-offset: 3px; }
+@media (max-width: 760px) {
+  .reference-shell .reference-sidebar[data-collapsed="true"] > div:first-child { padding-inline: 12px !important; flex-wrap: wrap; justify-content: center; gap: 0; }
+  .reference-shell .reference-sidebar[data-collapsed="true"] > div:last-child { padding: 8px; }
+  .reference-shell .reference-sidebar[data-collapsed="true"] [class*="group/user"] { padding: 4px !important; justify-content: center; }
+  .reference-shell .reference-page-panel.px-10 { padding-inline: 18px !important; }
+  .reference-page-container { padding-inline: 16px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .estate-video-background video, .reference-shell :is(.reference-card, .reference-stat-card) { transition: none; }
+  .reference-shell :is(.reference-card, .reference-stat-card):hover { transform: none; }
+}
+[data-motion="off"] .reference-shell :is(.reference-card, .reference-stat-card) { transition: none; transform: none; }
+

@@ -11,7 +11,7 @@ interface PageHeaderProps {
 
 export function PageHeader({ eyebrow, title, description, actions, className }: PageHeaderProps) {
   return (
-    <div className={cn("flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between", className)}>
+    <div className={cn("workspace-page-header flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between", className)}>
       <div className="min-w-0">
         {eyebrow && <div className="reference-eyebrow eyebrow mb-2">{eyebrow}</div>}
         <h1 className="reference-page-title font-display text-3xl font-bold text-balance sm:text-[34px]">
@@ -36,6 +36,6 @@ export function PageContainer({
   className?: string
 }) {
   return (
-    <div className={cn("w-full max-w-none px-6 py-6 lg:px-8", className, "max-w-none")}>{children}</div>
+    <div className={cn("reference-page-container w-full max-w-none px-6 py-6 lg:px-8", className, "max-w-none")}>{children}</div>
   )
 }

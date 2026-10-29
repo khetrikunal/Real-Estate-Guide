@@ -177,8 +177,9 @@ export default function FollowupPage() {
     <PageContainer className="max-w-[1560px] py-4">
       <div className="reference-page-panel px-6 py-6 sm:px-8">
         <PageHeader
-          eyebrow="Super admin · Dashboard"
+          eyebrow="Client operations"
           title="Follow-ups"
+          description="Keep your next conversation, visit, and client milestone in focus."
           actions={
             <div className="flex flex-wrap items-center gap-3">
               <div className="border-border bg-muted/40 flex items-center gap-3 rounded-xl border px-4 py-2">

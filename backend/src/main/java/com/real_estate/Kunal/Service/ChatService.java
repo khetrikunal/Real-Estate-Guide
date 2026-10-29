@@ -29,11 +29,18 @@ public class ChatService {
     private final MessageReactionRepository messageReactionRepository;
     private final UserRepository userRepository;
     private final FcmService fcmService;
+    private final ChatAccessPolicy chatAccess;
+    private final ChatEvents chatEvents;
 
     // ── Conversations ────────────────────────────────────────
 
     @Transactional
     public Conversation getOrCreateDirectConversation(Long userId1, Long userId2) {
+        User actor = userRepository.findById(userId1).orElseThrow(() -> new IllegalArgumentException("User not found"));
+        User recipient = userRepository.findById(userId2).orElseThrow(() -> new IllegalArgumentException("Teammate not found"));
+        if (!chatAccess.canContact(actor, recipient)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This person is outside your workspace");
+        }
         return conversationRepository.findDirectConversation(userId1, userId2)
                 .orElseGet(() -> createConversation("direct", null, List.of(userId1, userId2)));
     }
@@ -51,11 +58,28 @@ public class ChatService {
                     .conversationId(conversation.getId())
                     .userId(userId)
                     .build();
-            participantRepository.save(p);
+            p = participantRepository.save(p);
+            conversation.getParticipants().add(p);
         }
 
-        // Reload to get participants
+        chatEvents.publish(conversation.getId(), "conversation.created");
         return conversationRepository.findById(conversation.getId()).orElse(conversation);
+    }
+
+    public void validateParticipants(User actor, List<Long> ids) {
+        if (ids == null || ids.isEmpty() || ids.size() > 50) throw new IllegalArgumentException("Choose 1 to 50 teammates");
+        for (Long id : ids) {
+            if (Objects.equals(id, actor.getId())) continue;
+            User recipient = userRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Teammate not found"));
+            if (!chatAccess.canContact(actor, recipient)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This person is outside your workspace");
+        }
+    }
+
+    public List<String> readBy(Message message) {
+        var readers = new LinkedHashSet<String>();
+        readers.add(message.getSender().getId().toString());
+        messageReadRepository.findByMessageId(message.getId()).forEach(read -> readers.add(read.getUserId().toString()));
+        return List.copyOf(readers);
     }
 
     public List<ConversationDTO> getUserConversationsWithDetails(Long userId) {
@@ -181,6 +205,8 @@ public class ChatService {
         conversation.setUpdatedAt(LocalDateTime.now());
         conversationRepository.save(conversation);
 
+        chatEvents.publish(conversationId, "message.created");
+
         // Send FCM to offline participants (non-critical — don't let FCM errors roll back the save)
         try {
             for (ConversationParticipant p : conversation.getParticipants()) {
@@ -227,6 +253,7 @@ public class ChatService {
         }
         msg.setContent(newContent);
         msg.setEditedAt(LocalDateTime.now());
+        chatEvents.publish(msg.getConversation().getId(), "message.updated");
         return messageRepository.save(msg);
     }
 
@@ -237,6 +264,7 @@ public class ChatService {
             throw new RuntimeException("Not authorized to delete this message");
         }
         messageRepository.delete(msg);
+        chatEvents.publish(msg.getConversation().getId(), "message.deleted");
         return msg;
     }
 
@@ -320,8 +348,11 @@ public class ChatService {
 
     // ── User Search ──────────────────────────────────────────
 
-    public List<User> searchUsers(String query) {
-        return userRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(query, query);
+    public List<User> searchUsers(String query, User actor) {
+        String term = query == null ? "" : query.trim();
+        if (term.length() < 2) return List.of();
+        return userRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(term, term).stream()
+                .filter(user -> chatAccess.canContact(actor, user)).limit(30).toList();
     }
 
     // ── Delete conversation ──────────────────────────────────

@@ -43,7 +43,7 @@ export function RequireAuth() {
       </main>
     );
   }
-  if (validRouteRole && !canAccessRolePath(authenticatedRole, routeSlug)) {
+  if (validRouteRole && routeSlug !== 'overview' && !canAccessRolePath(authenticatedRole, routeSlug)) {
     return (
       <main className="workspace">
         <ForbiddenState title="Access restricted" subtitle="This role does not include that Flutter workspace action." />

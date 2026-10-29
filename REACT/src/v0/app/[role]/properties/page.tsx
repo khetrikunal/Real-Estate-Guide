@@ -526,9 +526,9 @@ function PropertiesContent({ role }: { role: string }) {
               </AnimatedRows>
               {filteredProjects.length === 0 ? (
                 <div className="border-border bg-muted/20 mt-4 rounded-xl border p-8 text-center">
-                  <div className="text-sm font-semibold">No projects match these filters</div>
+                  <div className="text-sm font-semibold">{projects.length === 0 ? "Your portfolio starts here" : "No projects match these filters"}</div>
                   <div className="text-muted-foreground mt-1 text-sm">
-                    Adjust the filters or reset them to view all projects.
+                    {projects.length === 0 ? "Add your first property to manage its pricing, availability, and documents." : "Adjust the filters or reset them to view all projects."}
                   </div>
                 </div>
               ) : null}

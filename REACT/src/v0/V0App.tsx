@@ -13,8 +13,8 @@ type Params = Record<string, string>;
 const routeFallback = <div className="p-6 text-sm text-muted-foreground">Loading...</div>;
 
 const RolesPage = lazy(() => import('@/app/roles/page'));
-const SubAdminSignupPage = lazy(() => import('@/app/signup/subadmin/page'));
 const FollowupPage = lazy(() => import('@/app/[role]/followup/page'));
+const OverviewPage = lazy(() => import('@/app/[role]/overview/page'));
 const SearchPropertyPage = lazy(() => import('@/app/[role]/search-property/page'));
 const PropertyDetailPage = lazy(() => import('@/app/[role]/search-property/[id]/page'));
 const PropertiesPage = lazy(() => import('@/app/[role]/properties/page'));
@@ -140,7 +140,7 @@ function FullscreenRoleShell({ children }: { children: ReactNode }) {
 
 function RoleIndexRedirect() {
   const role = useRoleParam();
-  return <Navigate to={`/${role}/followup`} replace />;
+  return <Navigate to={`/${role}/overview`} replace />;
 }
 
 function LegacyAddPropertyRedirect() {
@@ -161,11 +161,12 @@ export function V0App() {
         <Route path="/roles" element={<LazyRoute><RolesPage /></LazyRoute>} />
         <Route path="/login" element={<Navigate to="/roles" replace />} />
         <Route path="/login/:role" element={<AsyncPage render={(params) => loadLoginPage().then(({ default: LoginPage }) => LoginPage({ params }))} />} />
-        <Route path="/signup/subadmin" element={<LazyRoute><SubAdminSignupPage /></LazyRoute>} />
-        <Route path="/signup/razorpay" element={<LazyRoute><SubAdminSignupPage /></LazyRoute>} />
+        <Route path="/signup/subadmin" element={<Navigate to="/roles" replace />} />
+        <Route path="/signup/razorpay" element={<Navigate to="/roles" replace />} />
 
         <Route element={<RequireAuth />}>
           <Route path="/:role" element={<RoleIndexRedirect />} />
+          <Route path="/:role/overview" element={<RoleShell><LazyRoute><OverviewPage /></LazyRoute></RoleShell>} />
           <Route path="/:role/followup" element={<RoleShell><LazyRoute><FollowupPage /></LazyRoute></RoleShell>} />
           <Route path="/:role/search-property" element={<RoleShell><LazyRoute><SearchPageRoute /></LazyRoute></RoleShell>} />
           <Route path="/:role/search-property/:id" element={<RoleShell><PropertyDetailRoute /></RoleShell>} />
@@ -181,8 +182,11 @@ export function V0App() {
           <Route path="/:role/sales" element={<RoleShell><LazyRoute><SalesPage /></LazyRoute></RoleShell>} />
           <Route path="/:role/crm" element={<RoleShell><LazyRoute><CrmPage /></LazyRoute></RoleShell>} />
           <Route path="/:role/admins" element={<RoleShell><LazyRoute><AdminsPage /></LazyRoute></RoleShell>} />
+          <Route path="/:role/admins/new" element={<RoleShell><LazyRoute><AdminsPage createUserRole="Admin" /></LazyRoute></RoleShell>} />
           <Route path="/:role/subadmins" element={<RoleShell><LazyRoute><AdminsPage /></LazyRoute></RoleShell>} />
+          <Route path="/:role/subadmins/new" element={<RoleShell><LazyRoute><AdminsPage createUserRole="SubAdmin" /></LazyRoute></RoleShell>} />
           <Route path="/:role/employees" element={<RoleShell><LazyRoute><AdminsPage /></LazyRoute></RoleShell>} />
+          <Route path="/:role/employees/new" element={<RoleShell><LazyRoute><AdminsPage createUserRole="Employee" /></LazyRoute></RoleShell>} />
           <Route path="/:role/locations" element={<RoleShell><LazyRoute><LocationsPage /></LazyRoute></RoleShell>} />
           <Route path="/:role/add-location" element={<RoleShell><LazyRoute><LocationsPage /></LazyRoute></RoleShell>} />
           <Route path="/:role/analytics" element={<RoleShell><LazyRoute><AnalyticsPage /></LazyRoute></RoleShell>} />

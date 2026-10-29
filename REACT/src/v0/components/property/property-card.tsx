@@ -3,6 +3,9 @@ import { useState } from "react"
 import { Building2, ExternalLink, MapPin, Trash2 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
 
 import type { Property } from "@/lib/data"
 import { getPropertyViewTransitionName, useViewTransitionNavigate } from "@app/motion"
@@ -56,11 +59,11 @@ export function PropertyCard({ property, href, variant = "row", action, classNam
   const cover = (
     <div
       className={cn(
-        "border-border/80 bg-muted/30 relative flex shrink-0 items-center justify-center overflow-hidden rounded-lg border",
-        variant === "row" ? "h-16 w-16" : "h-40 w-full",
+        "property-cover relative flex shrink-0 items-center justify-center overflow-hidden",
+        variant === "row" ? "h-20 w-20 rounded-lg" : "h-44 w-full",
       )}
     >
-      <div className="reference-cover-glow" />
+      {variant === 'grid' && <Badge variant="outline" className="absolute top-3 left-3 z-10 border-white/60 bg-white/90 text-slate-600 text-[9px] backdrop-blur">{titleCase(property.status)}</Badge>}
       {hasCover ? (
         <img
           src={property.cover}
@@ -94,6 +97,7 @@ export function PropertyCard({ property, href, variant = "row", action, classNam
             ))}
             {property.id && <div className="truncate text-[10px] uppercase tracking-wide">ID: {property.id}</div>}
           </div>
+          <div className="mt-4 text-lg font-semibold tracking-tight text-foreground">{property.price}<span className="ml-2 text-[9px] font-normal tracking-normal text-muted-foreground">Starting price</span></div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <button
@@ -134,9 +138,7 @@ export function PropertyCard({ property, href, variant = "row", action, classNam
           </span>{" "}
           sold
         </span>
-        <div className="bg-border ml-auto h-1 w-24 overflow-hidden rounded-full">
-          <div className="bg-primary h-full transition-all duration-500 ease-out" style={{ width: `${pct}%` }} />
-        </div>
+        <Progress className="ml-auto h-1 w-20" value={Math.max(0, Math.min(100, pct))} aria-label="Units sold" />
       </div>
     </>
   )
@@ -151,20 +153,20 @@ export function PropertyCard({ property, href, variant = "row", action, classNam
     ) : (
       <>
         {cover}
-        <div className="mt-4">{meta}</div>
+        <div className="property-card-body">{meta}</div>
         {action ? <div className="mt-4">{action}</div> : null}
       </>
     )
 
   const cardClassName = cn(
-    "group surface-elevated motion-card border-border/80 hover:border-ring/30 focus-visible:ring-ring/35 relative flex rounded-xl border p-4 transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-1.5 hover:shadow-[0_24px_52px_-32px_rgba(0,0,0,0.55)] focus-visible:ring-2 focus-visible:outline-none motion-reduce:transform-none",
-    variant === "row" ? "items-center gap-4" : "flex-col",
+    "workspace-property-card group relative flex gap-0 py-0 ring-0 focus-visible:ring-2 focus-visible:outline-none",
+    variant === "row" ? "flex-row items-center gap-4 p-4" : "flex-col",
     className,
   )
 
   if (href) {
     return (
-      <div
+      <Card
         role="button"
         tabIndex={0}
         className={cardClassName}
@@ -185,11 +187,11 @@ export function PropertyCard({ property, href, variant = "row", action, classNam
         style={{ viewTransitionName: propertyTransitionName } as CSSProperties}
       >
         {inner}
-      </div>
+      </Card>
     )
   }
 
-  return <div className={cardClassName}>{inner}</div>
+  return <Card className={cardClassName}>{inner}</Card>
 }
 
 function titleCase(value: string) {

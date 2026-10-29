@@ -17,6 +17,7 @@ export interface ChatSocketOptions {
   onReaction?: PayloadHandler;
   onPresence?: PayloadHandler;
   onCall?: PayloadHandler;
+  onInbox?: PayloadHandler;
   onStatus?: (status: ChatSocketStatus) => void;
   onError?: (message: string) => void;
 }
@@ -30,6 +31,7 @@ export interface ChatSocketHandle {
   typing: (conversationId: string, isTyping: boolean) => boolean;
   callSignal: (conversationId: string, body: Record<string, unknown>) => boolean;
   isConnected: () => boolean;
+  selectConversation: (conversationId: string | null) => void;
 }
 
 const activeClients = new Set<Client>();
@@ -62,6 +64,7 @@ export function createChatSocket(input: ChatSocketOptions | PayloadHandler): Cha
   const reactionSubscriptions = new Map<string, StompSubscription>();
   const baseSubscriptions: StompSubscription[] = [];
   const trackedReactionIds = new Set(options.messageIds ?? []);
+  let selectedConversation = options.conversationId;
 
   const notifyStatus = (status: ChatSocketStatus) => options.onStatus?.(status);
   const notifyError = (message: string) => options.onError?.(message);
@@ -79,6 +82,7 @@ export function createChatSocket(input: ChatSocketOptions | PayloadHandler): Cha
     },
     onConnect: () => {
       notifyStatus('connected');
+      reactionSubscriptions.clear();
       subscribeBaseTopics();
       syncReactionSubscriptions();
       publish('/app/chat.join', {});
@@ -109,7 +113,7 @@ export function createChatSocket(input: ChatSocketOptions | PayloadHandler): Cha
       baseSubscriptions.pop()?.unsubscribe();
     }
 
-    const conversationId = options.conversationId;
+    const conversationId = selectedConversation;
     if (conversationId) {
       const topics: Array<[string, PayloadHandler | undefined]> = [
         [`/topic/conversation.${conversationId}`, options.onMessage],
@@ -128,8 +132,8 @@ export function createChatSocket(input: ChatSocketOptions | PayloadHandler): Cha
     const presenceSubscription = subscribe('/topic/user.status', options.onPresence);
     if (presenceSubscription) baseSubscriptions.push(presenceSubscription);
 
-    const legacySubscription = subscribe('/topic/chat', options.onMessage);
-    if (legacySubscription) baseSubscriptions.push(legacySubscription);
+    const inboxSubscription = subscribe('/user/queue/chat', options.onInbox);
+    if (inboxSubscription) baseSubscriptions.push(inboxSubscription);
   }
 
   function syncReactionSubscriptions() {
@@ -189,5 +193,13 @@ export function createChatSocket(input: ChatSocketOptions | PayloadHandler): Cha
     callSignal: (conversationId: string, body: Record<string, unknown>) =>
       publish('/app/chat.call', { ...body, conversationId }),
     isConnected: () => client.connected,
+    selectConversation: (conversationId) => {
+      if (selectedConversation === conversationId) return;
+      selectedConversation = conversationId;
+      reactionSubscriptions.forEach(subscription => subscription.unsubscribe());
+      reactionSubscriptions.clear();
+      trackedReactionIds.clear();
+      if (client.connected) subscribeBaseTopics();
+    },
   };
 }

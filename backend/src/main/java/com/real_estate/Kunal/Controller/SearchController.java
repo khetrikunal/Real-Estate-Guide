@@ -53,7 +53,7 @@ public class SearchController {
 
         List<Message> msgs = messageRepository.searchMessages(user.getId(), null, query, 5, 0);
         List<Conversation> convs = conversationRepository.searchConversations(user.getId(), query, 5);
-        List<User> users = chatService.searchUsers(query).stream()
+        List<User> users = chatService.searchUsers(query, user).stream()
                 .filter(u -> !Objects.equals(u.getId(), user.getId()))
                 .limit(20)
                 .toList();

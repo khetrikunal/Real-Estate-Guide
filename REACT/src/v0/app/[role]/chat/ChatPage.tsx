@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import {
   Bell,
+  ArrowLeft,
   Check,
   CheckCheck,
   Download,
@@ -279,6 +280,10 @@ export function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const startedUrlUserRef = useRef('');
   const [showMsgSearch, setShowMsgSearch] = useState(false);
+  const activeConvRef = useRef(activeConv);
+  activeConvRef.current = activeConv;
+  const pendingTextRef = useRef<{ conversationId: string; content: string; knownIds: Set<string> } | null>(null);
+  const [sending, setSending] = useState(false);
 
   const currentUserId = stringValue(auth.user?.id);
 
@@ -323,6 +328,17 @@ export function ChatPage() {
   });
 
   const selectConversation = useCallback((conversationId: string | null, replace = true) => {
+    if (pendingTextRef.current) {
+      setChatError('Please wait for your message delivery to finish before switching conversations.');
+      return;
+    }
+    if (activeConvRef.current !== conversationId) {
+      socketRef.current?.typing(activeConvRef.current || '', false);
+      setDraft('');
+      setTypingUsers({});
+      setEditingMessage(null);
+      setChatError('');
+    }
     setActiveConv(conversationId);
     const next = new URLSearchParams(searchParams);
     next.delete('userId');
@@ -435,22 +451,22 @@ export function ChatPage() {
   }, [createConversation, searchParams]);
 
   useEffect(() => {
-    if (!activeConv && convList.length > 0 && !searchParams.get('userId')) {
-      selectConversation(conversationIdOf(sortedConvList[0]));
-    }
-  }, [activeConv, convList.length, searchParams, selectConversation, sortedConvList]);
-
-  useEffect(() => {
     if (activeMessages.data) {
       setMessages((prev) => mergeMessages(
         prev.filter((message) => message.conversationId === activeConv),
         activeMessages.data.map(normalizeMessage),
       ));
+      const pending = pendingTextRef.current;
+      if (pending && activeMessages.data.some(message => !pending.knownIds.has(messageIdOf(message)) && message.senderId === currentUserId && message.content === pending.content && message.conversationId === pending.conversationId)) {
+        pendingTextRef.current = null;
+        setSending(false);
+        setDraft('');
+      }
     }
   }, [activeConv, activeMessages.data]);
 
   useEffect(() => {
-    if (!activeConv || !activeMessages.data) return;
+    if (!activeConv || !activeMessages.data || document.visibilityState !== 'visible') return;
     const messageIds = activeMessages.data.map(messageIdOf).filter(Boolean);
     estateApi.chat.markRead(activeConv)
       .then(() => queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations() }))
@@ -459,16 +475,45 @@ export function ChatPage() {
   }, [activeConv, activeMessages.data, queryClient]);
 
   useEffect(() => {
-    if (!activeConv) return undefined;
+    if (!auth.token || !currentUserId) return undefined;
     const socket = createChatSocket({
-      conversationId: activeConv,
-      onStatus: setSocketStatus,
+      conversationId: activeConvRef.current,
+      onStatus: (status) => {
+        setSocketStatus(status);
+        if (status === 'connected') {
+          setChatError('');
+          queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations() });
+          if (activeConvRef.current) queryClient.invalidateQueries({ queryKey: queryKeys.chat.messages(activeConvRef.current) });
+        }
+      },
       onError: setChatError,
+      onInbox: (payload) => {
+        const event = (payload ?? {}) as Record<string, unknown>;
+        const conversationId = stringValue(event.conversationId);
+        if (event.type === 'message.error') {
+          setChatError(stringValue(event.message, 'Message could not be sent. Please retry.'));
+          pendingTextRef.current = null;
+          setSending(false);
+          return;
+        }
+        queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations() });
+        if (conversationId && conversationId === activeConvRef.current) {
+          queryClient.invalidateQueries({ queryKey: queryKeys.chat.messages(conversationId) });
+        }
+      },
       onMessage: (payload) => {
         const message = normalizeMessage(payload);
-        if (message.conversationId === activeConv) {
+        if (message.conversationId === activeConvRef.current) {
           setMessages((prev) => upsertMessage(prev, message));
           queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations() });
+          if (message.senderId === currentUserId && pendingTextRef.current?.content === message.content) {
+            pendingTextRef.current = null;
+            setSending(false);
+            setDraft('');
+          }
+          if (message.senderId !== currentUserId && document.visibilityState === 'visible') {
+            socketRef.current?.markRead(message.conversationId, [messageIdOf(message)]);
+          }
         }
       },
       onEdit: (payload) => setMessages((prev) => upsertMessage(prev, payload)),
@@ -523,14 +568,26 @@ export function ChatPage() {
 
     socket.connect();
     socketRef.current = socket;
-    estateApi.chat.presence({ isOnline: true }).catch(() => undefined);
     return () => {
-      socket.typing(activeConv, false);
+      if (activeConvRef.current) socket.typing(activeConvRef.current, false);
       socket.disconnect();
       socketRef.current = null;
-      estateApi.chat.presence({ isOnline: false }).catch(() => undefined);
     };
-  }, [activeConv, currentUserId, queryClient]);
+  }, [auth.token, currentUserId, queryClient]);
+
+  useEffect(() => {
+    socketRef.current?.selectConversation(activeConv);
+  }, [activeConv]);
+
+  useEffect(() => {
+    if (!sending) return;
+    const timer = window.setTimeout(() => {
+      pendingTextRef.current = null;
+      setSending(false);
+      setChatError('Delivery is not confirmed. Refresh the conversation before retrying.');
+    }, 15000);
+    return () => window.clearTimeout(timer);
+  }, [sending]);
 
   const reactionIdsKey = useMemo(() => messages.map(messageIdOf).filter(Boolean).join('|'), [messages]);
 
@@ -547,22 +604,24 @@ export function ChatPage() {
 
   async function sendMessage() {
     const body = draft.trim();
-    if (!body || !activeConv) return;
+    if (!body || !activeConv || sending) return;
     setChatError('');
     if (editingMessage) {
       editMessage.mutate({ messageId: messageIdOf(editingMessage), content: body });
       return;
     }
+    pendingTextRef.current = { conversationId: activeConv, content: body, knownIds: new Set(messages.map(messageIdOf)) };
     const sent = socketRef.current?.send('/app/chat.send', {
       conversationId: activeConv,
       type: 'text',
       content: body,
     });
     if (!sent) {
+      pendingTextRef.current = null;
       setChatError('Chat socket is not connected. Reopen the thread or retry after reconnect.');
       return;
     }
-    setDraft('');
+    setSending(true);
     socketRef.current?.typing(activeConv, false);
   }
 
@@ -655,20 +714,21 @@ export function ChatPage() {
   const socketConnected = socketStatus === 'connected';
 
   return (
-    <div className="dm-shell">
+    <div className={`dm-shell ${activeConv ? 'dm-has-active' : ''}`}>
       {/* ── Sidebar: conversation list ── */}
       <aside className="dm-sidebar">
         <div className="dm-sidebar-header">
           <h2 className="dm-sidebar-title">Messages</h2>
           <div className="dm-sidebar-meta">
             <span className={`dm-conn-dot ${socketConnected ? 'online' : ''}`} />
-            <span className="dm-conn-label">{socketStatusLabel(socketStatus)}</span>
-            <button className="dm-icon-btn" type="button" title="Refresh" onClick={() => conversations.refetch()}>
+            <span className="dm-conn-label" role="status">{socketStatusLabel(socketStatus)}</span>
+            <button className="dm-icon-btn" type="button" title="Refresh" onClick={() => { void conversations.refetch(); if (activeConv) void activeMessages.refetch(); }}>
               <RefreshCw size={14} />
             </button>
           </div>
         </div>
 
+        {!activeConv && chatError ? <div className="dm-banner dm-banner-error" role="alert">{chatError}</div> : null}
         <div className="dm-search">
           <Search size={15} className="dm-search-icon" />
           <input
@@ -712,6 +772,8 @@ export function ChatPage() {
         ) : null}
 
         <div className="dm-conv-list">
+          {conversations.isError ? <p className="dm-empty-sidebar" role="alert">Unable to load conversations. Use Refresh to retry.</p> : null}
+          {userSearch.trim().length >= 2 && !userSearchQuery.isFetching && !userSearchQuery.data?.length ? <p className="dm-empty-sidebar">{userSearchQuery.isError ? 'Could not search teammates. Try again.' : 'No teammates found. Ask your administrator to create their account.'}</p> : null}
           {convList.length === 0 ? (
             <div className="dm-empty-sidebar">
               <MessageSquare size={20} />
@@ -761,6 +823,7 @@ export function ChatPage() {
                   : initials(conversationTitle(activeConversation, currentUserId))}
                 {activePeerOnline ? <span className="dm-online-ring" /> : null}
               </span>
+              <button className="dm-icon-btn dm-mobile-back" type="button" aria-label="Back to conversations" onClick={() => selectConversation(null)}><ArrowLeft size={18} /></button>
               <div className="dm-thread-header-info">
                 <strong>{conversationTitle(activeConversation, currentUserId)}</strong>
                 <span className="dm-thread-status">
@@ -840,9 +903,9 @@ export function ChatPage() {
             ) : null}
 
             {/* Banners */}
-            {chatError ? (
-              <div className="dm-banner dm-banner-error">
-                <span>{chatError}</span>
+            {chatError || activeMessages.isError ? (
+              <div className="dm-banner dm-banner-error" role="alert">
+                <span>{chatError || 'Unable to load messages. Use Refresh to retry.'}</span>
                 <button type="button" className="dm-icon-btn" onClick={() => setChatError('')}><X size={14} /></button>
               </div>
             ) : null}
@@ -928,7 +991,7 @@ export function ChatPage() {
                             {/* Actions on the left for own messages */}
                             {own && !message.isDeleted ? (
                               <div className="dm-msg-actions">
-                                <button type="button" title="React" className="dm-msg-action-btn dm-react-trigger">
+                                <div role="group" aria-label="React to message" tabIndex={0} className="dm-msg-action-btn dm-react-trigger">
                                   <Smile size={14} />
                                   <div className="dm-react-popup">
                                     {REACTION_EMOJIS.map((emoji) => (
@@ -942,7 +1005,7 @@ export function ChatPage() {
                                       </button>
                                     ))}
                                   </div>
-                                </button>
+                                </div>
                                 <button type="button" title="Edit" className="dm-msg-action-btn" onClick={() => startEdit(message)}>
                                   <Edit3 size={13} />
                                 </button>
@@ -964,7 +1027,7 @@ export function ChatPage() {
                             {/* Actions on the right for other's messages */}
                             {!own && !message.isDeleted ? (
                               <div className="dm-msg-actions">
-                                <button type="button" title="React" className="dm-msg-action-btn dm-react-trigger">
+                                <div role="group" aria-label="React to message" tabIndex={0} className="dm-msg-action-btn dm-react-trigger">
                                   <Smile size={14} />
                                   <div className="dm-react-popup">
                                     {REACTION_EMOJIS.map((emoji) => (
@@ -978,7 +1041,7 @@ export function ChatPage() {
                                       </button>
                                     ))}
                                   </div>
-                                </button>
+                                </div>
                               </div>
                             ) : null}
                           </div>
@@ -1058,6 +1121,7 @@ export function ChatPage() {
                     id="chat-message-input"
                     name="chat-message-input"
                     rows={1}
+                    disabled={sending}
                     value={draft}
                     onChange={(event) => setDraft(event.target.value)}
                     placeholder={editingMessage ? 'Edit message...' : 'Message...'}
@@ -1073,10 +1137,11 @@ export function ChatPage() {
                   className="dm-send-btn"
                   type="button"
                   onClick={sendMessage}
-                  disabled={!draft.trim() || editMessage.isPending}
+                  disabled={!draft.trim() || editMessage.isPending || sending || !socketConnected}
+                  aria-label={sending ? 'Sending message' : 'Send message'}
                   title="Send"
                 >
-                  <Send size={16} />
+                  {sending ? <RefreshCw size={16} className="dm-spin" /> : <Send size={16} />}
                 </button>
               </div>
             </div>

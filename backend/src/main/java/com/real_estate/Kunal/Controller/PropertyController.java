@@ -260,10 +260,14 @@ public class PropertyController {
     public ResponseEntity<ByteArrayResource> downloadUnitDocument(
             @PathVariable("propertyId") Long propertyId,
             @PathVariable("unitId") Long unitId,
-            @PathVariable("documentId") Long documentId
+            @PathVariable("documentId") Long documentId,
+            @RequestParam(value = "exp", required = false) Long exp,
+            @RequestParam(value = "sig", required = false) String sig,
+            java.security.Principal principal
     ) throws IOException {
-        UnitDocumentResponse doc = propertyManagementService.getUnitDocument(propertyId, unitId, documentId);
-        ObjectStorageService.StoredObject stored = propertyManagementService.downloadUnitDocument(propertyId, unitId, documentId);
+        ObjectStorageService.StoredObject stored = principal != null
+                ? propertyManagementService.downloadUnitDocument(propertyId, unitId, documentId)
+                : propertyManagementService.downloadSignedUnitDocument(propertyId, unitId, documentId, exp, sig);
 
         MediaType mediaType;
         try {
@@ -274,7 +278,7 @@ public class PropertyController {
 
         return ResponseEntity.ok()
                 .contentType(mediaType)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + doc.getDocumentName() + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"document-" + documentId + "\"")
                 .body(new ByteArrayResource(stored.bytes()));
     }
 }

@@ -21,6 +21,7 @@ public class Payment {
     private String razorpayOrderId;
 
     private String razorpayPaymentId;
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private String razorpaySignature;
 
     /** Amount in paise (e.g. ₹200 = 20000 paise) */
@@ -57,4 +58,6 @@ public class Payment {
     private LocalDateTime createdAt = LocalDateTime.now();
 
     private LocalDateTime verifiedAt;
+
+    private LocalDateTime renewalAppliedAt;
 }

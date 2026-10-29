@@ -304,5 +304,5 @@ export function canAccessRolePath(role: Role, slug?: string) {
 }
 
 export function defaultRouteForRole(role: Role) {
-  return `/${role}/followup`;
+  return `/${role}/overview`;
 }

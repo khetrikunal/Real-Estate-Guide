@@ -11,6 +11,7 @@ public interface OtpRecordRepository extends JpaRepository<OtpRecord, Long> {
 
     void deleteByEmailAndPurposeAndIsUsedFalse(String email, String purpose);
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     Optional<OtpRecord> findTopByEmailAndPurposeAndIsUsedFalseOrderByCreatedAtDesc(String email, String purpose);
 
     List<OtpRecord> findByEmailAndPurposeAndCreatedAtAfter(String email, String purpose, LocalDateTime after);

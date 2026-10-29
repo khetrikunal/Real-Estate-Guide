@@ -17,7 +17,7 @@ public class LoginRequest {
     @NotBlank(message = "Password is required")
     private String password;
 
-    @NotBlank(message = "Role is required")
+    // Optional for the shared login; the account's stored role determines access.
     @Pattern(regexp = "SUPER_ADMIN|ADMIN|SUB_ADMIN|EMPLOYEE", message = "Role is invalid")
     private String role;
 

@@ -31,6 +31,8 @@ public class AuthService {
     @Value("${app.security.enable-dev-fallbacks:false}")
     private boolean enableDevFallbacks;
 
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('SUPER_ADMIN')")
+    @org.springframework.transaction.annotation.Transactional
     public String register(RegisterRequest request){
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new RuntimeException("Email already registered");
@@ -84,14 +86,17 @@ public class AuthService {
             throw new RuntimeException("Invalid password");
         }
 
-        Role requestedRole;
-        try {
-            requestedRole = Role.valueOf(request.getRole().trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Invalid role specified: " + request.getRole());
-        }
-        if (user.getRole() != requestedRole) {
-            throw new RuntimeException("Selected role does not match this account");
+        // Legacy clients may supply a role, but the shared login only needs credentials.
+        if (request.getRole() != null && !request.getRole().isBlank()) {
+            Role requestedRole;
+            try {
+                requestedRole = Role.valueOf(request.getRole().trim().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid role specified: " + request.getRole());
+            }
+            if (user.getRole() != requestedRole) {
+                throw new RuntimeException("Selected role does not match this account");
+            }
         }
 
         user.setLastLoginAt(LocalDateTime.now());
@@ -101,7 +106,7 @@ public class AuthService {
     }
 
     public String generateJwt(User user) {
-        return jwtUtil.generateToken(user.getEmail(), user.getRole().name(), user.getId());
+        return jwtUtil.generateToken(user.getEmail(), user.getRole().name(), user.getId(), user.getTokenVersion());
     }
 
     private String resolveLoginIdentifier(LoginRequest request) {

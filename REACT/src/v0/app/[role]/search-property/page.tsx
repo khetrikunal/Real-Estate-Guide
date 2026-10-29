@@ -1,5 +1,6 @@
 "use client"
 
+
 import { useState, useMemo, use } from "react"
 import { Search } from "lucide-react"
 
@@ -293,7 +294,7 @@ export default function SearchPropertyPage({ params }: { params: SearchPropertyP
           >
             <Search className="text-muted-foreground h-5 w-5" />
             <Input
-              autoFocus
+              aria-label="Search properties by configuration, price, location, or builder"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search 2 BHK, price, carpet area, config name, builder…"
@@ -307,7 +308,7 @@ export default function SearchPropertyPage({ params }: { params: SearchPropertyP
       </RevealSection>
 
       {/* Results / empty */}
-      <div className="mx-auto mt-8 max-w-6xl">
+      <div id="property-results" className="mx-auto mt-8 max-w-6xl">
         <div className="mb-3 min-h-5 text-right text-xs font-medium text-muted-foreground">
           {q.trim() && results.length > 0 ? `${results.length} configuration${results.length === 1 ? "" : "s"}` : " "}
         </div>

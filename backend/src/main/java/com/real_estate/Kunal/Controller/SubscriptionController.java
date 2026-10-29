@@ -21,16 +21,19 @@ public class SubscriptionController {
     private final SubscriptionService subscriptionService;
 
     @PostMapping("/subscribe")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('SUPER_ADMIN')")
     public Subscription subscribe(@RequestBody SubscribeRequest request) {
         return subscriptionService.subscribe(request);
     }
 
     @GetMapping("/status/{userId}")
+    @org.springframework.security.access.prepost.PreAuthorize("@subscriptionService.canAccessSubscription(#userId)")
     public boolean checkSubscription(@PathVariable Long userId) {
         return subscriptionService.hasActiveSubscription(userId);
     }
 
     @GetMapping("/{userId}")
+    @org.springframework.security.access.prepost.PreAuthorize("@subscriptionService.canAccessSubscription(#userId)")
     public Map<String, Object> getSubscriptionDetails(@PathVariable Long userId) {
 
         Map<String, Object> result = new HashMap<>();

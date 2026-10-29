@@ -77,6 +77,7 @@ public class UserService {
         return "Admin Created Successfully";
     }
 
+    @Transactional
     public UserManagementResponse createSubAdmin(CreateUserRequest request){
 
         final String email = request.getEmail() != null ? request.getEmail().trim().toLowerCase() : "";

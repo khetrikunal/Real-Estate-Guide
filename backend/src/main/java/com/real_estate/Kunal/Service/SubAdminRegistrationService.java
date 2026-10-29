@@ -78,6 +78,10 @@ public class SubAdminRegistrationService {
         if (existing.isPresent()) {
             TempRegistration temp = existing.get();
             if (temp.getExpiresAt().isAfter(LocalDateTime.now())) {
+                if (!passwordEncoder.matches(req.getPassword(), temp.getPasswordHash())) {
+                    throw new org.springframework.web.server.ResponseStatusException(
+                            org.springframework.http.HttpStatus.UNAUTHORIZED, "Unable to resume registration with these credentials");
+                }
                 // Not expired — return existing order for resume
                 int amountInPaise = temp.getSubscriptionAmount().multiply(BigDecimal.valueOf(100)).intValue();
                 return InitiateRegistrationResponse.builder()
@@ -180,11 +184,9 @@ public class SubAdminRegistrationService {
 
     public void handleWebhookPayment(String orderId, String paymentId, String rawBody, String signatureHeader) {
         // Verify webhook signature
-        if (razorpayWebhookSecret != null && !razorpayWebhookSecret.isBlank()) {
-            if (!verifyWebhookSignature(rawBody, signatureHeader)) {
-                log.warn("Webhook signature verification failed for order {}", orderId);
-                throw new SecurityException("Invalid webhook signature");
-            }
+        if (razorpayWebhookSecret == null || razorpayWebhookSecret.isBlank()
+                || !verifyWebhookSignature(rawBody, signatureHeader)) {
+            throw new SecurityException("Invalid webhook signature");
         }
 
         TempRegistration temp = tempRepo.findByRazorpayOrderId(orderId).orElse(null);
@@ -222,6 +224,13 @@ public class SubAdminRegistrationService {
 
         TempRegistration temp = tempRepo.findByRegistrationToken(token)
                 .orElseThrow(() -> new IllegalArgumentException("Registration not found"));
+
+        if (!java.util.Objects.equals(temp.getRazorpayOrderId(), req.getRazorpayOrderId())) {
+            throw new SecurityException("Payment order does not match registration");
+        }
+        if (temp.getExpiresAt() == null || temp.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Registration expired");
+        }
 
         // If already completed, return JWT immediately
         if ("COMPLETED".equals(temp.getStatus())) {
@@ -364,6 +373,11 @@ public class SubAdminRegistrationService {
             // Race condition: duplicate email — find the existing user
             User existingUser = userRepository.findByEmail(temp.getEmail())
                     .orElseThrow(() -> e); // If truly not found, re-throw
+            if (existingUser.getRole() != Role.SUB_ADMIN
+                    || !java.util.Objects.equals(existingUser.getPassword(), temp.getPasswordHash())
+                    || !java.util.Objects.equals(existingUser.getRazorpayPaymentId(), temp.getRazorpayPaymentId())) {
+                throw new IllegalStateException("Email is already registered to another account");
+            }
             log.info("User {} already exists (id={}). Marking temp as COMPLETED.", temp.getEmail(), existingUser.getId());
             temp.setStatus("COMPLETED");
             temp.setCompletedAt(LocalDateTime.now());
@@ -383,10 +397,17 @@ public class SubAdminRegistrationService {
     // ─── Private Helpers ───────────────────────────────────────────────────
 
     private RegistrationStatusResponse buildCompletedResponse(TempRegistration temp) {
+        if (temp.getExpiresAt() == null || temp.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Registration token expired. Please sign in.");
+        }
         User user = userRepository.findByEmail(temp.getEmail())
                 .orElseThrow(() -> new IllegalStateException("User not found after registration completion"));
+        if (user.getPasswordChangedAt() != null || user.getRole() != Role.SUB_ADMIN
+                || !java.util.Objects.equals(user.getRazorpayPaymentId(), temp.getRazorpayPaymentId())) {
+            throw new SecurityException("Registration token is no longer valid. Please sign in.");
+        }
 
-        String jwt = jwtUtil.generateToken(user.getEmail(), user.getRole().name(), user.getId());
+        String jwt = jwtUtil.generateToken(user.getEmail(), user.getRole().name(), user.getId(), user.getTokenVersion());
 
         return RegistrationStatusResponse.builder()
                 .status("COMPLETED")

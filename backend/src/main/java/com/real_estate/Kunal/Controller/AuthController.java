@@ -97,12 +97,12 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
     @GetMapping("/me")
-    public ResponseEntity<User> getCurrentUser(Authentication authentication) {
+    public ResponseEntity<com.real_estate.Kunal.DTO.SessionUserResponse> getCurrentUser(Authentication authentication) {
         String email = authentication.getName(); // from JWT subject
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        return ResponseEntity.ok(user);
+        return ResponseEntity.ok(com.real_estate.Kunal.DTO.SessionUserResponse.from(user));
     }
 
     @PostMapping("/forgot-password/send-otp")
@@ -127,7 +127,7 @@ public class AuthController {
     }
 
     @PutMapping("/update-profile")
-    public ResponseEntity<User> updateProfile(@Valid @RequestBody UpdateProfileRequest request,
+    public ResponseEntity<com.real_estate.Kunal.DTO.SessionUserResponse> updateProfile(@Valid @RequestBody UpdateProfileRequest request,
                                               Authentication authentication) {
         User user = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
@@ -142,7 +142,7 @@ public class AuthController {
             user.setProfilePhotoUrl(request.getProfilePhotoUrl().trim());
         }
 
-        return ResponseEntity.ok(userRepository.save(user));
+        return ResponseEntity.ok(com.real_estate.Kunal.DTO.SessionUserResponse.from(userRepository.save(user)));
     }
 
 }

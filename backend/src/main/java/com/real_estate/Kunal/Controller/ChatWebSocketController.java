@@ -30,15 +30,18 @@ import java.util.*;
 @Slf4j
 public class ChatWebSocketController {
 
+    private final java.util.concurrent.ConcurrentMap<String, String> sessions = new java.util.concurrent.ConcurrentHashMap<>();
+
     private final ChatService chatService;
     private final SimpMessagingTemplate messagingTemplate;
     private final SignedMediaUrlService signedMediaUrlService;
     private final ChatRateLimiter chatRateLimiter;
 
     @MessageMapping("/chat.join")
-    public void joinConversations(Principal principal) {
+    public void joinConversations(Principal principal, StompHeaderAccessor headers) {
         if (principal == null) return;
 
+        sessions.put(headers.getSessionId(), principal.getName());
         chatService.setUserOnline(principal.getName(), true);
         broadcastUserStatus(principal.getName(), true);
     }
@@ -125,6 +128,9 @@ public class ChatWebSocketController {
             );
         } catch (Exception e) {
             log.warn("Dropped chat.send STOMP message after validation failure: {}", e.getClass().getSimpleName());
+            messagingTemplate.convertAndSendToUser(principal.getName(), "/queue/chat", Map.of(
+                    "type", "message.error", "message", "Message could not be saved. Your text is available to retry.",
+                    "conversationId", Objects.toString(dto.getConversationId(), "")));
         }
     }
 
@@ -207,7 +213,8 @@ public class ChatWebSocketController {
     public void handleWebSocketDisconnect(SessionDisconnectEvent event) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
         String username = accessor.getUser() != null ? accessor.getUser().getName() : null;
-        if (username != null) {
+        if (accessor.getSessionId() != null) sessions.remove(accessor.getSessionId());
+        if (username != null && !sessions.containsValue(username)) {
             chatService.setUserOnline(username, false);
             broadcastUserStatus(username, false);
         }

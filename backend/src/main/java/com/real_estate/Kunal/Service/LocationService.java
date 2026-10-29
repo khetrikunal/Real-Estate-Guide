@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.net.URI;
+import java.io.IOException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -39,10 +40,47 @@ public class LocationService {
     private final LocationRepository locationRepository;
     private final CustomCityRepository customCityRepository;
     private final AreaRepository areaRepository;
-    private final HttpClient httpClient = HttpClient.newBuilder()
-            .followRedirects(HttpClient.Redirect.NORMAL)
-            .connectTimeout(Duration.ofSeconds(10))
-            .build();
+    // Construct only when resolving a remote URL; ordinary DB operations need no sockets.
+    protected HttpClient httpClient() {
+        return HttpClient.newBuilder()
+                .followRedirects(HttpClient.Redirect.NEVER)
+                .connectTimeout(Duration.ofSeconds(10))
+                .build();
+    }
+
+    private URI validateMapUri(String raw) {
+        URI uri = URI.create(raw);
+        String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(java.util.Locale.ROOT);
+        if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getUserInfo() != null
+                || (uri.getPort() != -1 && uri.getPort() != 443)
+                || !java.util.Set.of("google.com", "www.google.com", "maps.google.com",
+                        "google.co.in", "www.google.co.in", "maps.google.co.in",
+                        "maps.app.goo.gl", "goo.gl").contains(host)) {
+            throw new IllegalArgumentException("Use an HTTPS Google Maps URL");
+        }
+        if ("goo.gl".equals(host) && !uri.getPath().startsWith("/maps/")) {
+            throw new IllegalArgumentException("Use a Google Maps short link");
+        }
+        return uri;
+    }
+
+    private HttpResponse<String> fetchMap(URI uri) throws IOException, InterruptedException {
+        HttpClient client = httpClient();
+        for (int redirects = 0; redirects <= 5; redirects++) {
+            URI safeUri = validateMapUri(uri.toString());
+            HttpRequest request = HttpRequest.newBuilder(safeUri)
+                    .timeout(Duration.ofSeconds(15))
+                    .header("Accept", "text/html")
+                    .header("User-Agent", "Mozilla/5.0")
+                    .GET().build();
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() < 300 || response.statusCode() >= 400) return response;
+            String location = response.headers().firstValue("Location")
+                    .orElseThrow(() -> new IllegalArgumentException("Map redirect has no destination"));
+            uri = validateMapUri(safeUri.resolve(location).toString());
+        }
+        throw new IllegalArgumentException("Too many map redirects");
+    }
 
     public Location createLocation(LocationRequest request) {
         String state = request.getState() != null ? request.getState().trim() : "";
@@ -193,6 +231,7 @@ public class LocationService {
             throw new IllegalArgumentException("URL is required");
         }
 
+        URI inputUri = validateMapUri(url);
         LatLng direct = extractLatLng(url);
         if (direct != null) {
             return MapUrlResolveResponse.builder()
@@ -203,15 +242,7 @@ public class LocationService {
         }
 
         try {
-            URI inputUri = URI.create(url);
-            HttpRequest request = HttpRequest.newBuilder(inputUri)
-                    .timeout(Duration.ofSeconds(15))
-                    .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-                    .header("User-Agent", "Mozilla/5.0")
-                    .GET()
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = fetchMap(inputUri);
 
             String finalUrl = response.uri() != null ? response.uri().toString() : url;
             LatLng fromFinal = extractLatLng(finalUrl);
@@ -343,7 +374,7 @@ public class LocationService {
                     .header("User-Agent", "reactestate-map-resolver/1.0")
                     .GET()
                     .build();
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient().send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 return null;
             }

@@ -26,6 +26,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final CustomUserDetailsService userDetailsService;
+    private final com.real_estate.Kunal.Repository.UserRepository userRepository;
 
     private boolean allowsQueryToken(HttpServletRequest request) {
         if (!"GET".equalsIgnoreCase(request.getMethod())) {
@@ -53,8 +54,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // Skip only public auth endpoints. Authenticated auth endpoints (for example
         // /api/auth/change-password) must go through JWT validation.
-        boolean isPublicAuthEndpoint = path.equals("/api/auth/register")
-            || path.equals("/api/auth/login")
+        boolean isPublicAuthEndpoint = path.equals("/api/auth/login")
             || path.equals("/api/auth/forgot-password/send-otp")
             || path.equals("/api/auth/forgot-password/verify-otp")
             || path.equals("/api/auth/forgot-password/reset-password");
@@ -112,7 +112,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
 
-            if (jwtUtil.validateToken(token)) {
+            if (jwtUtil.validateAccessToken(token, userRepository.findByEmail(email).orElse(null))) {
 
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(

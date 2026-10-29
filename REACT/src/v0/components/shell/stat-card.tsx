@@ -1,6 +1,7 @@
 import * as React from "react"
 import { ArrowUpRight, ArrowDownRight, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Card } from '@/components/ui/card'
 
 interface StatCardProps {
   label: string
@@ -33,9 +34,9 @@ const iconBgMap = {
 export function StatCard({ label, value, hint, icon: Icon, trend, tone = "default", className }: StatCardProps) {
   const trendUp = trend && trend.value >= 0
   return (
-    <div
+    <Card
       className={cn(
-        "reference-stat-card surface-elevated group relative overflow-hidden rounded-xl border border-border p-4",
+        "reference-stat-card workspace-stat-card group relative overflow-hidden gap-0 py-0 ring-0 border border-border p-4",
         className,
       )}
     >
@@ -65,6 +66,6 @@ export function StatCard({ label, value, hint, icon: Icon, trend, tone = "defaul
           </div>
         )}
       </div>
-    </div>
+    </Card>
   )
 }

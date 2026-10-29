@@ -88,7 +88,7 @@ public class PasswordRecoveryService {
         return response;
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = ResponseStatusException.class)
     public Map<String, Object> verifyOtp(ForgotPasswordVerifyOtpRequest request) {
         final String email = normalizeEmail(request.getEmail());
         final String otp = Optional.ofNullable(request.getOtp()).orElse("").trim();
@@ -130,7 +130,7 @@ public class PasswordRecoveryService {
         record.setIsUsed(true);
         otpRecordRepository.save(record);
 
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmailForUpdate(email)
                 
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No account found with this email"));
 
@@ -165,7 +165,7 @@ public class PasswordRecoveryService {
         String email = claims.getSubject();
         Long tokenVersion = claims.get("tokenVersion", Long.class);
 
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmailForUpdate(email)
                 
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No account found with this email"));
 
@@ -189,6 +189,7 @@ public class PasswordRecoveryService {
         return response;
     }
 
+    @Transactional
     public Map<String, Object> changePassword(String authenticatedEmail, ChangePasswordRequest request) {
         final String currentPassword = Optional.ofNullable(request.getCurrentPassword()).orElse("");
         final String newPassword = Optional.ofNullable(request.getNewPassword()).orElse("");
@@ -198,7 +199,7 @@ public class PasswordRecoveryService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Passwords do not match");
         }
 
-        User user = userRepository.findByEmail(authenticatedEmail)
+        User user = userRepository.findByEmailForUpdate(authenticatedEmail)
                 
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
@@ -214,6 +215,7 @@ public class PasswordRecoveryService {
 
         user.setPassword(passwordEncoder.encode(newPassword));
         user.setPasswordChangedAt(LocalDateTime.now());
+        user.setTokenVersion(Optional.ofNullable(user.getTokenVersion()).orElse(0L) + 1);
         userRepository.save(user);
 
         Map<String, Object> response = new HashMap<>();
@@ -222,14 +224,14 @@ public class PasswordRecoveryService {
     }
 
     private void validatePasswordStrength(String password) {
-        boolean strong = password.length() >= 8
+        boolean strong = password.length() >= 12
                 && password.matches(".*[A-Z].*")
                 && password.matches(".*[0-9].*")
                 && password.matches(".*[^A-Za-z0-9].*");
         if (!strong) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Password must be at least 8 chars with uppercase, number, and special character"
+                    "Password must be at least 12 chars with uppercase, number, and special character"
             );
         }
     }
@@ -253,7 +255,7 @@ public class PasswordRecoveryService {
     }
 
     private String generateOtp() {
-        int number = 100000 + (int) (Math.random() * 900000);
+        int number = 100000 + new java.security.SecureRandom().nextInt(900000);
         return String.valueOf(number);
     }
 

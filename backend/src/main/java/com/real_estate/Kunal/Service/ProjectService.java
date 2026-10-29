@@ -783,6 +783,7 @@ public class ProjectService {
         if (isOwnScopedRole(user) && !Objects.equals(project.getUploadedBy(), user.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only modify projects you created");
         }
+        assertProjectAccess(user, project.getCity(), project.getArea());
     }
 
     public void ensureCanSellProject(Project project) {

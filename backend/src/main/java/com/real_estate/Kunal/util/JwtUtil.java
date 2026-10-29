@@ -37,10 +37,16 @@ public class JwtUtil {
     }
 
     public String generateToken(String email, String role, Long id) {
+        return generateToken(email, role, id, 0L);
+    }
+
+    public String generateToken(String email, String role, Long id, Long tokenVersion) {
 
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", role);
         claims.put("id", id);
+        claims.put("purpose", "access");
+        claims.put("tokenVersion", tokenVersion == null ? 0L : tokenVersion);
 
         return Jwts.builder()
                 .setClaims(claims)
@@ -93,8 +99,24 @@ public class JwtUtil {
 
         try {
             Claims claims = extractAllClaims(token);
-            return claims.getExpiration() != null && claims.getExpiration().after(new Date());
+            return "access".equals(claims.get("purpose", String.class))
+                    && claims.get("role", String.class) != null
+                    && claims.getExpiration() != null && claims.getExpiration().after(new Date());
         } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public boolean validateAccessToken(String token, com.real_estate.Kunal.Entity.User user) {
+        if (user == null || !validateToken(token)) return false;
+        try {
+            Claims claims = extractAllClaims(token);
+            Number version = claims.get("tokenVersion", Number.class);
+            long currentVersion = user.getTokenVersion() == null ? 0L : user.getTokenVersion();
+            return user.getEmail().equals(claims.getSubject())
+                    && user.getRole().name().equals(claims.get("role", String.class))
+                    && version != null && version.longValue() == currentVersion;
+        } catch (Exception ex) {
             return false;
         }
     }

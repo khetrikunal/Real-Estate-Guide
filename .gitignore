@@ -118,3 +118,4 @@ ec2_nginx.txt
 instances.txt
 s3_buckets.txt
 backend/application-prod-updated.properties
+/.runtime/
